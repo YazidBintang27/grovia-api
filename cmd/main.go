@@ -1,7 +1,7 @@
 package main
 
-import "fmt"
+import "grovia/internal/firebase"
 
 func main() {
-	fmt.Print("Test")
+	firebase.InitFirebase()
 }
