@@ -56,7 +56,7 @@ func (a *authService) Login(req requests.LoginRequest) (*responses.TokenResponse
 		return nil, errors.New("invalid Password")
 	}
 
-	accessToken, refreshToken, err := pkg.GenerateJWT(user.ID, user.Role)
+	accessToken, refreshToken, err := pkg.GenerateJWT(user.ID, user.LocationID, user.Role)
 
 	if err != nil {
 		return nil, errors.New("invalid Token")

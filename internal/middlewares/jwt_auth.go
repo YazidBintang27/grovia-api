@@ -17,7 +17,7 @@ func JWTAuth() fiber.Handler {
 				Message: "Authorization header missing",
 				Data:    nil,
 				Error: responses.ErrorResponse{
-					Code:    "",
+					Code:    "UNAUTHORIZED",
 					Message: "Authorization header missing",
 				},
 			})
@@ -33,7 +33,7 @@ func JWTAuth() fiber.Handler {
 				Message: "Authorization header missing",
 				Data:    nil,
 				Error: responses.ErrorResponse{
-					Code:    "",
+					Code:    "UNAUTHORIZED",
 					Message: "Authorization header missing",
 				},
 			})

@@ -4,6 +4,8 @@ import "time"
 
 type User struct {
 	ID             int       `json:"id" gorm:"primaryKey;autoIncrement"`
+	LocationID     int       `json:"location_id" gorm:"not null"` 
+	Location       Location  `json:"location" gorm:"foreignKey:LocationID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:SET NULL"`
 	Name           string    `json:"name" gorm:"type:varchar(100);not null"`
 	PhoneNumber    string    `json:"phone_number" gorm:"type:varchar(20);unique;not null"`
 	Address        string    `json:"address" gorm:"type:text"`
