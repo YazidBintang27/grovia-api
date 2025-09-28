@@ -8,7 +8,7 @@ CREATE TABLE users(
     nik VARCHAR(100) NOT NULL,
     profile_picture VARCHAR(100) NOT NULL,
     password VARCHAR(100) NOT NULL,
-    role VARCHAR(100) NOT NULL,
+    role VARCHAR(50) NOT NULL CHECK (role IN ('admin', 'kepala_posyandu', 'kader')),
     created_by VARCHAR(100) NOT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,

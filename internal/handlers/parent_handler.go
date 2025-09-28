@@ -4,21 +4,69 @@ import (
 	"grovia/internal/dto/requests"
 	"grovia/internal/dto/responses"
 	"grovia/internal/services"
+	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 )
 
-type UserHandler struct {
-	service services.UserService
+type ParentHandler struct {
+	service services.ParentService
 }
 
-func NewUserHandler(service services.UserService) *UserHandler {
-	return &UserHandler{service: service}
+func NewParentHandler(service services.ParentService) *ParentHandler {
+	return &ParentHandler{service: service}
 }
 
-func (u *UserHandler) CreateUser(ctx *fiber.Ctx) error {
+func (p *ParentHandler) CreateParentWithToddlers(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
-	role := ctx.Locals("role")
+	if !ok || userID == 0 {
+		return ctx.Status(fiber.StatusUnauthorized).JSON(responses.BaseResponse{
+			Success: false,
+			Message: "Unauthorized",
+			Data:    nil,
+			Error: responses.ErrorResponse{
+				Code:    "UNAUTHORIZED",
+				Message: "Unauthorized",
+			},
+		})
+	}
+
+	var req requests.CreateParentWithToddlersRequest
+	if err := ctx.BodyParser(&req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(responses.BaseResponse{
+			Success: false,
+			Message: "Invalid Request",
+			Data:    nil,
+			Error: responses.ErrorResponse{
+				Code:    "INVALID_REQUEST",
+				Message: err.Error(),
+			},
+		})
+	}
+
+	parentResp, err := p.service.CreateParentWithToddlers(req)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
+			Success: false,
+			Message: "Internal Server Error",
+			Data:    nil,
+			Error: responses.ErrorResponse{
+				Code:    "INTERNAL_SERVER_ERROR",
+				Message: err.Error(),
+			},
+		})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
+		Success: true,
+		Message: "Create Parent With Toddlers Success",
+		Data:    parentResp,
+		Error:   nil,
+	})
+}
+
+func (p *ParentHandler) GetAllParent(ctx *fiber.Ctx) error {
+	userID, ok := ctx.Locals("user_id").(int)
 	locationID := ctx.Locals("location_id").(*int)
 
 	if !ok || userID == 0 {
@@ -33,26 +81,7 @@ func (u *UserHandler) CreateUser(ctx *fiber.Ctx) error {
 		})
 	}
 
-	var req requests.CreateUserRequest
-
-	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Invalid Request",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INVALID_REQUEST",
-				Message: err.Error(),
-			},
-		})
-	}
-
-	file, err := ctx.FormFile("profilePicture")
-	if err == nil {
-		req.ProfilePicture = file
-	}
-
-	user, err := u.service.CreateUser(req, role.(string), locationID)
+	parents, err := p.service.GetAllParent(*locationID)
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
@@ -68,14 +97,15 @@ func (u *UserHandler) CreateUser(ctx *fiber.Ctx) error {
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
 		Success: true,
-		Message: "Create User Success",
-		Data:    user,
+		Message: "Get All Parent Data Success",
+		Data:    parents,
 		Error:   nil,
 	})
 }
 
-func (u *UserHandler) GetCurrentUser(ctx *fiber.Ctx) error {
+func (p *ParentHandler) GetParentByID(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
+	locationID := ctx.Locals("location_id").(*int)
 
 	if !ok || userID == 0 {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(responses.BaseResponse{
@@ -89,7 +119,22 @@ func (u *UserHandler) GetCurrentUser(ctx *fiber.Ctx) error {
 		})
 	}
 
-	user, err := u.service.GetCurrentUser(userID)
+	idParam := ctx.Params("id")
+	id, err := strconv.Atoi(idParam)
+
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(responses.BaseResponse{
+			Success: false,
+			Message: "Invalid Request",
+			Data:    nil,
+			Error: responses.ErrorResponse{
+				Code:    "INVALID_REQUEST",
+				Message: err.Error(),
+			},
+		})
+	}
+
+	parent, err := p.service.GetParentByID(id, *locationID)
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
@@ -98,22 +143,22 @@ func (u *UserHandler) GetCurrentUser(ctx *fiber.Ctx) error {
 			Data:    nil,
 			Error: responses.ErrorResponse{
 				Code:    "INTERNAL_SERVER_ERROR",
-				Message: "Internal Server Error",
+				Message: err.Error(),
 			},
 		})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
 		Success: true,
-		Message: "Get User Success",
-		Data:    user,
+		Message: "Get Parent Data Success",
+		Data:    parent,
 		Error:   nil,
 	})
 }
 
-func (u *UserHandler) GetUserByID(ctx *fiber.Ctx) error {
+func (p *ParentHandler) UpdateParentByID(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
-	role := ctx.Locals("role")
+	locationID := ctx.Locals("location_id").(*int)
 
 	if !ok || userID == 0 {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(responses.BaseResponse{
@@ -127,82 +172,7 @@ func (u *UserHandler) GetUserByID(ctx *fiber.Ctx) error {
 		})
 	}
 
-	user, err := u.service.GetUserById(userID, role.(string))
-
-	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: "Internal Server Error",
-			},
-		})
-	}
-
-	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
-		Success: true,
-		Message: "Get User Success",
-		Data:    user,
-		Error:   nil,
-	})
-}
-
-func (u *UserHandler) GetUsersByRole(ctx *fiber.Ctx) error {
-	userID, ok := ctx.Locals("user_id").(int)
-	role := ctx.Locals("role")
-
-	if !ok || userID == 0 {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Unauthorized",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "UNAUTHORIZED",
-				Message: "Unauthorized",
-			},
-		})
-	}
-
-	user, err := u.service.GetUsersByRole(role.(string))
-
-	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: "Internal Server Error",
-			},
-		})
-	}
-
-	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
-		Success: true,
-		Message: "Get User Success",
-		Data:    user,
-		Error:   nil,
-	})
-}
-
-func (u *UserHandler) UpdateCurrentUser(ctx *fiber.Ctx) error {
-	userID, ok := ctx.Locals("user_id").(int)
-
-	if !ok || userID == 0 {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Unauthorized",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "UNAUTHORIZED",
-				Message: "Unauthorized",
-			},
-		})
-	}
-
-	var req requests.UpdateUserRequest
+	var req requests.UpdateParentRequest
 	if err := ctx.BodyParser(&req); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(responses.BaseResponse{
 			Success: false,
@@ -210,68 +180,27 @@ func (u *UserHandler) UpdateCurrentUser(ctx *fiber.Ctx) error {
 			Data:    nil,
 			Error: responses.ErrorResponse{
 				Code:    "INVALID_REQUEST",
-				Message: "Invalid Request",
+				Message: err.Error(),
 			},
 		})
 	}
 
-	user, err := u.service.UpdateCurrentUser(userID, req)
+	idParam := ctx.Params("id")
+	id, err := strconv.Atoi(idParam)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: "Internal Server Error",
-			},
-		})
-	}
-
-	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
-		Success: true,
-		Message: "Update User Success",
-		Data:    user,
-		Error:   nil,
-	})
-}
-
-func (u *UserHandler) UpdateUserByID(ctx *fiber.Ctx) error {
-	userID, ok := ctx.Locals("user_id").(int)
-	role := ctx.Locals("role")
-
-	if !ok || userID == 0 {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Unauthorized",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "UNAUTHORIZED",
-				Message: "Unauthorized",
-			},
-		})
-	}
-
-	var req requests.UpdateUserRequest
-	if err := ctx.BodyParser(&req); err != nil {
 		return ctx.Status(fiber.StatusBadRequest).JSON(responses.BaseResponse{
 			Success: false,
 			Message: "Invalid Request",
 			Data:    nil,
 			Error: responses.ErrorResponse{
 				Code:    "INVALID_REQUEST",
-				Message: "Invalid Request",
+				Message: err.Error(),
 			},
 		})
 	}
 
-	file, err := ctx.FormFile("profilePicture")
-	if err == nil {
-		req.ProfilePicture = file
-	}
-
-	user, err := u.service.UpdateUserByID(userID, req, role.(string))
+	parentResponses, err := p.service.UpdateParentByID(id, *locationID, req)
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
@@ -280,21 +209,22 @@ func (u *UserHandler) UpdateUserByID(ctx *fiber.Ctx) error {
 			Data:    nil,
 			Error: responses.ErrorResponse{
 				Code:    "INTERNAL_SERVER_ERROR",
-				Message: "Internal Server Error",
+				Message: err.Error(),
 			},
 		})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
 		Success: true,
-		Message: "Update User Success",
-		Data:    user,
+		Message: "Update Parent Data Success",
+		Data:    parentResponses,
 		Error:   nil,
 	})
 }
 
-func (u *UserHandler) DeleteCurrentUser(ctx *fiber.Ctx) error {
+func (p *ParentHandler) DeleteParentByID(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
+	locationID := ctx.Locals("location_id").(*int)
 
 	if !ok || userID == 0 {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(responses.BaseResponse{
@@ -308,56 +238,39 @@ func (u *UserHandler) DeleteCurrentUser(ctx *fiber.Ctx) error {
 		})
 	}
 
-	if err := u.service.DeleteCurrentUser(userID); err != nil {
+	idParam := ctx.Params("id")
+	id, err := strconv.Atoi(idParam)
+
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(responses.BaseResponse{
+			Success: false,
+			Message: "Invalid Request",
+			Data:    nil,
+			Error: responses.ErrorResponse{
+				Code:    "INVALID_REQUEST",
+				Message: err.Error(),
+			},
+		})
+	}
+
+	err = p.service.DeleteParentByID(id, *locationID)
+
+	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
 			Success: false,
 			Message: "Internal Server Error",
 			Data:    nil,
 			Error: responses.ErrorResponse{
 				Code:    "INTERNAL_SERVER_ERROR",
-				Message: "Internal Server Error",
+				Message: err.Error(),
 			},
 		})
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
 		Success: true,
-		Message: "Delete User Success",
-		Error:   nil,
-	})
-}
-
-func (u *UserHandler) DeleteUserByID(ctx *fiber.Ctx) error {
-	userID, ok := ctx.Locals("user_id").(int)
-	role := ctx.Locals("role")
-
-	if !ok || userID == 0 {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Unauthorized",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "UNAUTHORIZED",
-				Message: "Unauthorized",
-			},
-		})
-	}
-
-	if err := u.service.DeleteUserByID(userID, role.(string)); err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: "Internal Server Error",
-			},
-		})
-	}
-
-	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
-		Success: true,
-		Message: "Delete User Success",
+		Message: "Delete Parent Data Success",
+		Data:    nil,
 		Error:   nil,
 	})
 }

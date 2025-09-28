@@ -468,3 +468,119 @@
     }
  }
  ```
+
+ # Parent
+
+ ## POST api/parents
+
+### Request
+ - #### Method: `POST`
+ - #### Header: `Bearer <token>`
+ - #### Content-type: `application/json`
+ - #### Endpoint: `/parents`
+ - #### Body:
+
+ ```json
+ {
+   "name": "yazid",
+   "phoneNumber": "087712354798",
+   "address": "Ds. Pangadegan RT 002 RW 003",
+   "nik": "3603312711040004",
+   "job": "Pengusaha"
+ }
+ ```
+
+### Response
+ - #### Status: `200 OK`
+ - #### Body: 
+ ```json
+ {
+    "success": true,
+    "message": "Create parent data Success",
+    "data": {
+      "name": "yazid",
+      "phoneNumber": "087712354798",
+      "address": "Ds. Pangadegan RT 002 RW 003",
+      "nik": "3603312711040004",
+      "job": "Pengusaha",
+      "createdAt": "2025-08-03T00:00:00Z",
+      "updatedAt": "2025-08-03T00:00:00Z"
+    },
+    "error": null
+ }
+ ```
+
+ - #### Status: `401 Unauthorized`
+ - #### Body: 
+ ```json
+ {
+    "success": false,
+    "message": "Create parent data Failed",
+    "data": null,
+    "error": {
+      "code": "UNAUTHORIZED",
+      "message": "Invalid Token"
+    }
+ }
+ ```
+
+ ## GET api/parents
+
+ ### Request
+ - #### Method: `GET`
+ - #### Header: `Bearer <token>`
+ - #### Content-type: `application/json`
+ - #### Endpoint: `/parents`
+
+### Response
+ - #### Status: `200 OK`
+ - #### Body: 
+ ```json
+ {
+    "success": true,
+    "message": "Get parent data Success",
+    "data": [
+      {
+         "id": 1,
+         "name": "yazid",
+         "phoneNumber": "087712354798",
+         "address": "Ds. Pangadegan RT 002 RW 003",
+         "nik": "3603312711040004",
+         "job": "Pengusaha",
+         "createdAt": "2025-08-03T00:00:00Z",
+         "updatedAt": "2025-08-03T00:00:00Z"
+      },
+      {
+         "id": 2,
+         "name": "yazid",
+         "phoneNumber": "087712354798",
+         "address": "Ds. Pangadegan RT 002 RW 003",
+         "nik": "3603312711040004",
+         "job": "Pengusaha",
+         "createdAt": "2025-08-03T00:00:00Z",
+         "updatedAt": "2025-08-03T00:00:00Z"
+      }
+    ],
+    "error": null
+ }
+ ```
+
+ - #### Status: `401 Unauthorized`
+ - #### Body: 
+ ```json
+ {
+    "success": false,
+    "message": "Get parent data Failed",
+    "data": null,
+    "error": {
+      "code": "UNAUTHORIZED",
+      "message": "Invalid Token"
+    }
+ }
+ ```
+
+ ## GET api/parents/:id
+
+ ## PUT api/parents/:id
+
+ ## DELETE api/parents/:id
