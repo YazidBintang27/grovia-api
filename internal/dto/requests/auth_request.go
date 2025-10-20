@@ -1,7 +1,7 @@
 package requests
 
 type LoginRequest struct {
-	PhoneNumber string `json:"phone_number" binding:"required"`
+	PhoneNumber string `json:"phoneNumber" binding:"required"`
 	Password    string `json:"password" binding:"required"`
 }
 
@@ -10,4 +10,8 @@ type ResetPasswordRequest struct {
 	PhoneNumber     string `json:"phoneNumber"`
 	Password        string `json:"password"`
 	ConfirmPassword string `json:"confirmPassword"`
+}
+
+type RefreshTokenRequest struct {
+	RefreshToken string `json:"refreshToken" validate:"required"`
 }

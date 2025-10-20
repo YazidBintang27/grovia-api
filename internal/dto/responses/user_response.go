@@ -4,7 +4,7 @@ import "time"
 
 type UserResponse struct {
 	ID             int       `json:"id"`
-	LocationID     int       `json:"location_id"`
+	LocationID     int       `json:"locationID"`
 	Name           string    `json:"name"`
 	PhoneNumber    string    `json:"phoneNumber"`
 	Address        string    `json:"address"`

@@ -7,13 +7,13 @@ type User struct {
 	LocationID     int       `json:"location_id" gorm:"not null"`
 	Location       Location  `json:"location" gorm:"foreignKey:LocationID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 	Name           string    `json:"name" gorm:"type:varchar(100);not null"`
-	PhoneNumber    string    `json:"phone_number" gorm:"type:varchar(100);unique;not null"`
+	PhoneNumber    string    `json:"phoneNumber" gorm:"type:varchar(100);unique;not null"`
 	Address        string    `json:"address" gorm:"type:varchar(100)"`
 	Nik            string    `json:"nik" gorm:"type:varchar(100);unique;not null"`
-	ProfilePicture string    `json:"profile_picture" gorm:"type:varchar(100)"`
+	ProfilePicture string    `json:"profilePicture" gorm:"type:text"`
 	Password       string    `json:"-" gorm:"type:varchar(100);not null"`
-	Role           string    `json:"role" gorm:"type:varchar(100);default:'user'"`
-	CreatedBy      string    `json:"created_by" gorm:"type:varchar(100)"`
-	CreatedAt      time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt      time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	Role           string    `json:"role" gorm:"type:varchar(100);"`
+	CreatedBy      string    `json:"createdBy" gorm:"type:varchar(100)"`
+	CreatedAt      time.Time `json:"createdAt" gorm:"autoCreateTime"`
+	UpdatedAt      time.Time `json:"updatedAt" gorm:"autoUpdateTime"`
 }

@@ -584,3 +584,23 @@
  ## PUT api/parents/:id
 
  ## DELETE api/parents/:id
+
+
+```json
+{
+   "success": true,
+   "message": "Predict Success",
+   "data": {
+      "id": 1,
+      "toddler_id": 1,
+      "height": 94.5,
+      "age": 30,
+      "sex": "Male",
+      "zscore": 24.5,
+      "nutrional_status": "Severely Stunted",
+      "created_at": "2025-08-03T00:00:00Z",
+      "updated_at": "2025-08-03T00:00:00Z"
+   },
+   "error": null
+}
+```

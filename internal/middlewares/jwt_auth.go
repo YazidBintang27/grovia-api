@@ -23,24 +23,25 @@ func JWTAuth() fiber.Handler {
 			})
 		}
 
-		tokenStr := strings.Replace(authHeader, "Bearer ", "", 1)
+		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+		tokenStr = strings.TrimSpace(tokenStr)
 
 		claims, err := pkg.ValidateToken(tokenStr)
-
 		if err != nil {
 			return ctx.Status(fiber.StatusUnauthorized).JSON(responses.BaseResponse{
 				Success: false,
-				Message: "Authorization header missing",
+				Message: "Invalid or expired token",
 				Data:    nil,
 				Error: responses.ErrorResponse{
-					Code:    "UNAUTHORIZED",
-					Message: "Authorization header missing",
+					Code:    "INVALID_TOKEN",
+					Message: err.Error(),
 				},
 			})
 		}
 
 		ctx.Locals("user_id", claims.UserID)
 		ctx.Locals("role", claims.Role)
+		ctx.Locals("location_id", claims.LocationID)
 
 		return ctx.Next()
 	}

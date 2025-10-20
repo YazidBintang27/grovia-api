@@ -11,10 +11,34 @@ import (
 type AuthService interface {
 	Login(req requests.LoginRequest) (*responses.TokenResponse, error)
 	ResetPassword(req requests.ResetPasswordRequest) error
+	RefreshToken(refreshToken string) (*responses.TokenResponse, error)
 }
 
 type authService struct {
 	repo repositories.AuthRepository
+}
+
+// RefreshToken implements AuthService.
+func (a *authService) RefreshToken(refreshToken string) (*responses.TokenResponse, error) {
+	claims, err := pkg.ValidateToken(refreshToken)
+	if err != nil {
+		return nil, errors.New("invalid or expired refresh token")
+	}
+
+	user, err := a.repo.FindByID(claims.UserID)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+
+	accessToken, newRefreshToken, err := pkg.GenerateJWT(user.ID, user.LocationID, user.Role)
+	if err != nil {
+		return nil, errors.New("failed to generate new tokens")
+	}
+
+	return &responses.TokenResponse{
+		AccessToken:  accessToken,
+		RefreshToken: newRefreshToken,
+	}, nil
 }
 
 // ResetPassword implements AuthService.
@@ -59,7 +83,7 @@ func (a *authService) Login(req requests.LoginRequest) (*responses.TokenResponse
 	accessToken, refreshToken, err := pkg.GenerateJWT(user.ID, user.LocationID, user.Role)
 
 	if err != nil {
-		return nil, errors.New("invalid Token")
+		return nil, errors.New(err.Error())
 	}
 
 	tokenResponse := responses.TokenResponse{

@@ -4,6 +4,7 @@ import (
 	"grovia/internal/dto/requests"
 	"grovia/internal/dto/responses"
 	"grovia/internal/services"
+	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -18,8 +19,8 @@ func NewUserHandler(service services.UserService) *UserHandler {
 
 func (u *UserHandler) CreateUser(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
-	role := ctx.Locals("role")
-	locationID := ctx.Locals("location_id").(*int)
+	role := ctx.Locals("role").(string)
+	locationID := ctx.Locals("location_id").(int)
 
 	if !ok || userID == 0 {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(responses.BaseResponse{
@@ -52,7 +53,7 @@ func (u *UserHandler) CreateUser(ctx *fiber.Ctx) error {
 		req.ProfilePicture = file
 	}
 
-	user, err := u.service.CreateUser(req, role.(string), locationID)
+	user, err := u.service.CreateUser(req, role, locationID)
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
@@ -127,7 +128,21 @@ func (u *UserHandler) GetUserByID(ctx *fiber.Ctx) error {
 		})
 	}
 
-	user, err := u.service.GetUserById(userID, role.(string))
+	idParam := ctx.Params("id")
+	id, err := strconv.Atoi(idParam)
+
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(responses.BaseResponse{
+			Success: false,
+			Message: "Invalid target ID",
+			Error: responses.ErrorResponse{
+				Code:    "INVALID_REQUEST",
+				Message: err.Error(),
+			},
+		})
+	}
+
+	user, err := u.service.GetUserById(id, role.(string))
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
@@ -136,7 +151,7 @@ func (u *UserHandler) GetUserByID(ctx *fiber.Ctx) error {
 			Data:    nil,
 			Error: responses.ErrorResponse{
 				Code:    "INTERNAL_SERVER_ERROR",
-				Message: "Internal Server Error",
+				Message: err.Error(),
 			},
 		})
 	}
@@ -174,7 +189,7 @@ func (u *UserHandler) GetUsersByRole(ctx *fiber.Ctx) error {
 			Data:    nil,
 			Error: responses.ErrorResponse{
 				Code:    "INTERNAL_SERVER_ERROR",
-				Message: "Internal Server Error",
+				Message: err.Error(),
 			},
 		})
 	}
@@ -210,9 +225,14 @@ func (u *UserHandler) UpdateCurrentUser(ctx *fiber.Ctx) error {
 			Data:    nil,
 			Error: responses.ErrorResponse{
 				Code:    "INVALID_REQUEST",
-				Message: "Invalid Request",
+				Message: err.Error(),
 			},
 		})
+	}
+
+	file, err := ctx.FormFile("profilePicture")
+	if err == nil {
+		req.ProfilePicture = file
 	}
 
 	user, err := u.service.UpdateCurrentUser(userID, req)
@@ -224,7 +244,7 @@ func (u *UserHandler) UpdateCurrentUser(ctx *fiber.Ctx) error {
 			Data:    nil,
 			Error: responses.ErrorResponse{
 				Code:    "INTERNAL_SERVER_ERROR",
-				Message: "Internal Server Error",
+				Message: err.Error(),
 			},
 		})
 	}
@@ -261,7 +281,7 @@ func (u *UserHandler) UpdateUserByID(ctx *fiber.Ctx) error {
 			Data:    nil,
 			Error: responses.ErrorResponse{
 				Code:    "INVALID_REQUEST",
-				Message: "Invalid Request",
+				Message: err.Error(),
 			},
 		})
 	}
@@ -271,7 +291,21 @@ func (u *UserHandler) UpdateUserByID(ctx *fiber.Ctx) error {
 		req.ProfilePicture = file
 	}
 
-	user, err := u.service.UpdateUserByID(userID, req, role.(string))
+	idParam := ctx.Params("id")
+	id, err := strconv.Atoi(idParam)
+
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(responses.BaseResponse{
+			Success: false,
+			Message: "Invalid target ID",
+			Error: responses.ErrorResponse{
+				Code:    "INVALID_REQUEST",
+				Message: err.Error(),
+			},
+		})
+	}
+
+	user, err := u.service.UpdateUserByID(id, req, role.(string))
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
@@ -280,7 +314,7 @@ func (u *UserHandler) UpdateUserByID(ctx *fiber.Ctx) error {
 			Data:    nil,
 			Error: responses.ErrorResponse{
 				Code:    "INTERNAL_SERVER_ERROR",
-				Message: "Internal Server Error",
+				Message: err.Error(),
 			},
 		})
 	}
@@ -315,7 +349,7 @@ func (u *UserHandler) DeleteCurrentUser(ctx *fiber.Ctx) error {
 			Data:    nil,
 			Error: responses.ErrorResponse{
 				Code:    "INTERNAL_SERVER_ERROR",
-				Message: "Internal Server Error",
+				Message: err.Error(),
 			},
 		})
 	}
@@ -343,14 +377,28 @@ func (u *UserHandler) DeleteUserByID(ctx *fiber.Ctx) error {
 		})
 	}
 
-	if err := u.service.DeleteUserByID(userID, role.(string)); err != nil {
+	idParam := ctx.Params("id")
+	id, err := strconv.Atoi(idParam)
+
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(responses.BaseResponse{
+			Success: false,
+			Message: "Invalid target ID",
+			Error: responses.ErrorResponse{
+				Code:    "INVALID_REQUEST",
+				Message: err.Error(),
+			},
+		})
+	}
+
+	if err := u.service.DeleteUserByID(id, role.(string)); err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
 			Success: false,
 			Message: "Internal Server Error",
 			Data:    nil,
 			Error: responses.ErrorResponse{
 				Code:    "INTERNAL_SERVER_ERROR",
-				Message: "Internal Server Error",
+				Message: err.Error(),
 			},
 		})
 	}

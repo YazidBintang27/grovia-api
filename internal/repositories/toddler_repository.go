@@ -1,32 +1,76 @@
 package repositories
 
 import (
+	"errors"
 	"grovia/internal/models"
+	"strings"
 
 	"gorm.io/gorm"
 )
 
 type ToddlerRepository interface {
+	CreateToddler(toddler *models.Toddler) (*models.Toddler, error)
 	GetAllToddler(locationID int) ([]models.Toddler, error)
 	GetToddlerByID(id, locationID int) (*models.Toddler, error)
 	UpdateToddlerByID(id, locationID int, toddler *models.Toddler) (*models.Toddler, error)
 	DeleteToddlerByID(id, locationID int) error
 	FindParentIDByID(id, locationID int) (*int, error)
+	FindToddlerByName(parentID int, name string) (bool, *models.Toddler, error)
+	GetAllToddlerAllLocation() ([]models.Toddler, error)
 }
 
 type toddlerRepository struct {
 	db *gorm.DB
 }
 
-// FindParentIDByID implements ToddlerRepository.
-func (t *toddlerRepository) FindParentIDByID(id int, locationID int) (*int, error) {
-	var parentID *int
-	if err := t.db.Model(&models.Toddler{}).
-		Where("id = ? AND location_id = ?", id, locationID).
-		Pluck("parent_id", &parentID).Error; err != nil {
+// GetAllToddlerAllLocation implements ToddlerRepository.
+func (t *toddlerRepository) GetAllToddlerAllLocation() ([]models.Toddler, error) {
+	var toddlers []models.Toddler
+
+	err := t.db.Find(&toddlers).Error
+
+	if err != nil {
 		return nil, err
 	}
-	return parentID, nil
+	return toddlers, nil
+}
+
+// FindToddlerByName implements ToddlerRepository.
+func (t *toddlerRepository) FindToddlerByName(parentID int, name string) (bool, *models.Toddler, error) {
+	normalizedName := strings.ToLower(strings.ReplaceAll(name, " ", ""))
+
+	var toddler models.Toddler
+	err := t.db.Where("parent_id = ? AND REPLACE(LOWER(name), ' ', '') = ?", parentID, normalizedName).
+		First(&toddler).Error
+
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return false, nil, err
+		}
+		return false, nil, err
+	}
+	return true, &toddler, nil
+}
+
+// CreateToddler implements ToddlerRepository.
+func (t *toddlerRepository) CreateToddler(toddler *models.Toddler) (*models.Toddler, error) {
+	if err := t.db.Create(toddler).Error; err != nil {
+		return nil, err
+	}
+
+	return toddler, nil
+}
+
+// FindParentIDByID implements ToddlerRepository.
+func (t *toddlerRepository) FindParentIDByID(id int, locationID int) (*int, error) {
+	var parentID int
+	if err := t.db.Model(&models.Toddler{}).
+		Select("parent_id").
+		Where("id = ? AND location_id = ?", id, locationID).
+		Take(&parentID).Error; err != nil {
+		return nil, err
+	}
+	return &parentID, nil
 }
 
 // DeleteToddlerByID implements ToddlerRepository.
@@ -35,14 +79,21 @@ func (t *toddlerRepository) DeleteToddlerByID(id int, locationID int) error {
 	if err != nil {
 		return err
 	}
-	return t.db.Where("id = ? AND location_id = ? AND parent_id = ?", id, locationID, parentID).Delete(&models.Toddler{}).Error
+	tx := t.db.Where("id = ? AND location_id = ? AND parent_id = ?", id, locationID, parentID).Delete(&models.Toddler{})
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 // GetAllToddler implements ToddlerRepository.
 func (t *toddlerRepository) GetAllToddler(locationID int) ([]models.Toddler, error) {
 	var toddlers []models.Toddler
 
-	err := t.db.Where("location_id = ?", locationID).First(&toddlers).Error
+	err := t.db.Where("location_id = ?", locationID).Find(&toddlers).Error
 
 	if err != nil {
 		return nil, err
@@ -61,10 +112,13 @@ func (t *toddlerRepository) GetToddlerByID(id int, locationID int) (*models.Todd
 
 	var toddler models.Toddler
 
-	err = t.db.Where("id = ? AND location_id = ? AND parent_id = ?", id, locationID, parentID).Find(&toddler).Error
+	tx := t.db.Where("id = ? AND location_id = ? AND parent_id = ?", id, locationID, parentID).Find(&toddler)
 
-	if err != nil {
-		return nil, err
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
 	}
 
 	return &toddler, nil
@@ -78,18 +132,24 @@ func (t *toddlerRepository) UpdateToddlerByID(id int, locationID int, toddler *m
 		return nil, err
 	}
 
-	err = t.db.Model(&toddler).Where("id = ? AND location_id = ? AND parent_id = ?", id, locationID, parentID).Updates(toddler).Error
+	tx := t.db.Model(toddler).Where("id = ? AND location_id = ? AND parent_id = ?", id, locationID, parentID).Updates(toddler)
 
-	if err != nil {
-		return nil, err
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
 	}
 
 	var toddlerResponse models.Toddler
 
-	err = t.db.Where("id = ? AND location_id = ?", id, locationID).First(&toddlerResponse).Error
+	tx = t.db.Where("id = ? AND location_id = ?", id, locationID).First(&toddlerResponse)
 
-	if err != nil {
-		return nil, err
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
 	}
 
 	return &toddlerResponse, nil

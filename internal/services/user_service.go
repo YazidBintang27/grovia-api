@@ -8,10 +8,12 @@ import (
 	"grovia/internal/models"
 	"grovia/internal/repositories"
 	"grovia/pkg"
+	"regexp"
+	"strings"
 )
 
 type UserService interface {
-	CreateUser(req requests.CreateUserRequest, createdBy string, locationID *int) (*responses.UserResponse, error)
+	CreateUser(req requests.CreateUserRequest, createdBy string, locationID int) (*responses.UserResponse, error)
 	GetCurrentUser(id int) (*responses.UserResponse, error)
 	GetUsersByRole(requesterRole string) ([]responses.UserResponse, error)
 	GetUserById(targetUserID int, accesorRole string) (*responses.UserResponse, error)
@@ -34,8 +36,12 @@ func (u *userService) GetUserById(targetUserID int, accesorRole string) (*respon
 		return nil, err
 	}
 
-	if !u.rolePermission(targetRole, accesorRole) {
-		return nil, fmt.Errorf("%s tidak boleh mengubah role ke %s", accesorRole, targetRole)
+	if targetRole == "" {
+		return nil, err
+	}
+
+	if !u.rolePermission(accesorRole, targetRole) {
+		return nil, fmt.Errorf("%s tidak boleh mengakses role %s ", accesorRole, targetRole)
 	}
 
 	user, err := u.repo.GetUser(targetUserID)
@@ -115,7 +121,7 @@ func (u *userService) DeleteUserByID(targetUserID int, updaterRole string) error
 }
 
 // CreateUser implements UserService.
-func (u *userService) CreateUser(req requests.CreateUserRequest, createdBy string, locationID *int) (*responses.UserResponse, error) {
+func (u *userService) CreateUser(req requests.CreateUserRequest, createdBy string, locationID int) (*responses.UserResponse, error) {
 
 	if !u.rolePermission(createdBy, req.Role) {
 		return nil, fmt.Errorf("role %s tidak diizinkan membuat user dengan role %s", createdBy, req.Role)
@@ -140,15 +146,15 @@ func (u *userService) CreateUser(req requests.CreateUserRequest, createdBy strin
 	var location int
 
 	if createdBy == "admin" {
-		if req.LocationID == nil {
+		if req.LocationID == 0 {
 			return nil, fmt.Errorf("admin harus menyertakan location_id")
 		}
-		location = *req.LocationID
+		location = req.LocationID
 	} else {
-		if locationID == nil {
+		if locationID == 0 {
 			return nil, fmt.Errorf("location_id tidak ditemukan di JWT")
 		}
-		location = *locationID
+		location = locationID
 	}
 
 	userMapping := models.User{
@@ -216,33 +222,64 @@ func (u *userService) GetCurrentUser(id int) (*responses.UserResponse, error) {
 	return response, nil
 }
 
-// UpdateUser implements UserService.
+// UpdateCurrentUser implements UserService.
 func (u *userService) UpdateCurrentUser(id int, req requests.UpdateUserRequest) (*responses.UserResponse, error) {
-	var url string
-	var err error
-
-	if req.ProfilePicture != nil {
-		url, err = u.s3.UploadFile(req.ProfilePicture, "users")
-		if err != nil {
-			return nil, err
+	if req.PhoneNumber != nil {
+		phone := strings.TrimSpace(*req.PhoneNumber)
+		if phone != "" {
+			if len(phone) < 10 || len(phone) > 15 {
+				return nil, errors.New("nomor telepon harus antara 10–15 digit")
+			}
+			if !regexp.MustCompile(`^[0-9]+$`).MatchString(phone) {
+				return nil, errors.New("nomor telepon hanya boleh berisi angka")
+			}
+		}
+	}
+	if req.Nik != nil {
+		nik := strings.TrimSpace(*req.Nik)
+		if nik != "" {
+			if len(nik) != 16 {
+				return nil, errors.New("nik harus 16 digit")
+			}
+			if !regexp.MustCompile(`^[0-9]+$`).MatchString(nik) {
+				return nil, errors.New("nik hanya boleh berisi angka")
+			}
 		}
 	}
 
-	userMapping := models.User{
-		Name:        req.Name,
-		PhoneNumber: req.PhoneNumber,
-		Address:     req.Address,
-		Nik:         req.Nik,
+	var url string
+	var err error
+
+	if req.ProfilePicture != nil && req.ProfilePicture.Filename != "" && req.ProfilePicture.Size > 0 {
+		url, err = u.s3.UploadFile(req.ProfilePicture, "users")
+		if err != nil {
+			return nil, fmt.Errorf("gagal upload foto profil: %v", err)
+		}
 	}
 
+	userMapping := models.User{}
+	if req.Name != nil {
+		userMapping.Name = *req.Name
+	}
+	if req.PhoneNumber != nil {
+		userMapping.PhoneNumber = *req.PhoneNumber
+	}
+	if req.Address != nil {
+		userMapping.Address = *req.Address
+	}
+	if req.Nik != nil {
+		userMapping.Nik = *req.Nik
+	}
 	if url != "" {
 		userMapping.ProfilePicture = url
 	}
-
-	if req.Password != "" {
-		hashedPassword, err := pkg.HashPassword(req.Password)
+	if req.Password != nil {
+		if len(*req.Password) < 6 {
+			return nil, errors.New("password minimal 6 karakter")
+		}
+		hashedPassword, err := pkg.HashPassword(*req.Password)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("gagal meng-hash password: %v", err)
 		}
 		userMapping.Password = hashedPassword
 	}
@@ -252,7 +289,7 @@ func (u *userService) UpdateCurrentUser(id int, req requests.UpdateUserRequest) 
 		return nil, err
 	}
 
-	response := responses.UserResponse{
+	return &responses.UserResponse{
 		ID:             user.ID,
 		LocationID:     user.LocationID,
 		Name:           user.Name,
@@ -264,9 +301,7 @@ func (u *userService) UpdateCurrentUser(id int, req requests.UpdateUserRequest) 
 		CreatedBy:      user.CreatedBy,
 		CreatedAt:      user.CreatedAt,
 		UpdatedAt:      user.UpdatedAt,
-	}
-
-	return &response, nil
+	}, nil
 }
 
 // UpdateUserByID implements UserService.
@@ -276,41 +311,78 @@ func (u *userService) UpdateUserByID(
 	updaterRole string,
 ) (*responses.UserResponse, error) {
 
-	role, err := u.repo.FindRoleById(targetUserID)
-
-	if err != nil {
-		return nil, err
+	if req.PhoneNumber != nil {
+		phone := strings.TrimSpace(*req.PhoneNumber)
+		if phone != "" {
+			if len(phone) < 10 || len(phone) > 15 {
+				return nil, errors.New("nomor telepon harus antara 10–15 digit")
+			}
+			if !regexp.MustCompile(`^[0-9]+$`).MatchString(phone) {
+				return nil, errors.New("nomor telepon hanya boleh berisi angka")
+			}
+		}
 	}
-
-	if !u.rolePermission(updaterRole, role) {
-		return nil, fmt.Errorf("%s tidak boleh mengubah role ke %s", updaterRole, req.Role)
-	}
-
-	var url string
-	if req.ProfilePicture != nil {
-		url, err = u.s3.UploadFile(req.ProfilePicture, "users")
-		if err != nil {
-			return nil, err
+	if req.Nik != nil {
+		nik := strings.TrimSpace(*req.Nik)
+		if nik != "" {
+			if len(nik) != 16 {
+				return nil, errors.New("nik harus 16 digit")
+			}
+			if !regexp.MustCompile(`^[0-9]+$`).MatchString(nik) {
+				return nil, errors.New("nik hanya boleh berisi angka")
+			}
 		}
 	}
 
-	userMapping := models.User{
-		Name:        req.Name,
-		LocationID:  *req.LocationID,
-		PhoneNumber: req.PhoneNumber,
-		Address:     req.Address,
-		Nik:         req.Nik,
-		Role:        req.Role,
+	if req.Role != nil {
+		role, err := u.repo.FindRoleById(targetUserID)
+		if err != nil {
+			return nil, err
+		}
+		if !u.rolePermission(updaterRole, role) {
+			return nil, fmt.Errorf("%s tidak boleh mengubah role ke %s", updaterRole, *req.Role)
+		}
 	}
 
+	var url string
+	var err error
+
+	if req.ProfilePicture != nil && req.ProfilePicture.Filename != "" && req.ProfilePicture.Size > 0 {
+		url, err = u.s3.UploadFile(req.ProfilePicture, "users")
+		if err != nil {
+			return nil, fmt.Errorf("gagal upload foto profil: %v", err)
+		}
+	}
+
+	userMapping := models.User{}
+	if req.Name != nil {
+		userMapping.Name = *req.Name
+	}
+	if req.LocationID != nil {
+		userMapping.LocationID = *req.LocationID
+	}
+	if req.PhoneNumber != nil {
+		userMapping.PhoneNumber = *req.PhoneNumber
+	}
+	if req.Address != nil {
+		userMapping.Address = *req.Address
+	}
+	if req.Nik != nil {
+		userMapping.Nik = *req.Nik
+	}
+	if req.Role != nil {
+		userMapping.Role = *req.Role
+	}
 	if url != "" {
 		userMapping.ProfilePicture = url
 	}
-
-	if req.Password != "" {
-		hashedPassword, err := pkg.HashPassword(req.Password)
+	if req.Password != nil {
+		if len(*req.Password) < 6 {
+			return nil, errors.New("password minimal 6 karakter")
+		}
+		hashedPassword, err := pkg.HashPassword(*req.Password)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("gagal meng-hash password: %v", err)
 		}
 		userMapping.Password = hashedPassword
 	}
@@ -346,6 +418,6 @@ func (u *userService) rolePermission(creatorRole, targetRole string) bool {
 	}
 }
 
-func NewUserService(repo repositories.UserRepository) UserService {
-	return &userService{repo: repo}
+func NewUserService(repo repositories.UserRepository, s3 *S3Service) UserService {
+	return &userService{repo: repo, s3: s3}
 }

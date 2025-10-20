@@ -63,17 +63,27 @@ func (u *userRepository) CreateUser(user *models.User) (*models.User, error) {
 
 // DeleteUser implements UserRepository.
 func (u *userRepository) DeleteUser(id int) error {
-	return u.db.Delete(&models.User{}, id).Error
+	tx := u.db.Delete(&models.User{}, id)
+	if tx.Error != nil {
+		return tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 // GetUser implements UserRepository.
 func (u *userRepository) GetUser(id int) (*models.User, error) {
 	var user models.User
 
-	err := u.db.First(&user, id).Error
+	tx := u.db.First(&user, id)
 
-	if err != nil {
-		return nil, err
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
 	}
 
 	return &user, nil
@@ -87,9 +97,12 @@ func (u *userRepository) UpdateUser(id int, user *models.User) (*models.User, er
 		return nil, err
 	}
 
-	err := u.db.Model(&existing).Updates(user).Error
-	if err != nil {
-		return nil, err
+	tx := u.db.Model(&existing).Updates(user)
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
 	}
 
 	return &existing, nil

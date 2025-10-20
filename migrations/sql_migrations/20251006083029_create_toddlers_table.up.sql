@@ -7,10 +7,13 @@ CREATE TABLE toddlers(
     birthdate DATE NOT NULL,
     sex VARCHAR(20) NOT NULL CHECK (sex IN ('M', 'F')),
     height DECIMAL(4,1) NOT NULL,
-    profile_picture VARCHAR(100) NOT NULL,
+    profile_picture TEXT NOT NULL,
+    nutritional_status VARCHAR(50) NOT NULL,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_toddlers_parent FOREIGN KEY (parent_id) REFERENCES parents(id) ON UPDATE CASCADE ON DELETE CASCADE,
-    CONSTRAINT fk_toddlers_location FOREIGN KEY (location_id) REFERENCES locations(id) ON UPDATE CASCADE ON DELETE CASCADE
+    CONSTRAINT fk_toddlers_location FOREIGN KEY (location_id) REFERENCES locations(id) ON UPDATE CASCADE ON DELETE CASCADE,
+    
+    CONSTRAINT unique_toddler_record UNIQUE (name, birthdate, parent_id, location_id)
 );

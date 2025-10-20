@@ -29,7 +29,7 @@ func GenerateJWT(userID, locationID int, role string) (accessToken, refreshToken
 		},
 	}
 
-	at := jwt.NewWithClaims(jwt.SigningMethodES256, accessClaims)
+	at := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
 	accessToken, err = at.SignedString(jwtKey)
 
 	if err != nil {
@@ -47,7 +47,7 @@ func GenerateJWT(userID, locationID int, role string) (accessToken, refreshToken
 		},
 	}
 
-	rt := jwt.NewWithClaims(jwt.SigningMethodES256, refreshClaims)
+	rt := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
 	refreshToken, err = rt.SignedString(jwtKey)
 
 	if err != nil {

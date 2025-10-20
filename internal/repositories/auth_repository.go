@@ -9,10 +9,21 @@ import (
 type AuthRepository interface {
 	FindByPhoneNumber(phoneNumber string) (*models.User, error)
 	ResetPassword(phoneNumber, newPassword string) error
+	FindByID(id int) (*models.User, error)
 }
 
 type authRepository struct {
 	db *gorm.DB
+}
+
+// FindByID implements AuthRepository.
+func (a *authRepository) FindByID(id int) (*models.User, error) {
+	var user models.User
+	err := a.db.First(&user, id).Error
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
 }
 
 // ResetPassword implements AuthRepository.

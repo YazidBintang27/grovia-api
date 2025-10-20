@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"mime/multipart"
+	"os"
 	"time"
 
 	"grovia/configs"
@@ -18,6 +19,7 @@ import (
 type S3Service struct {
 	client     *s3.Client
 	bucketName string
+	region     string
 }
 
 type S3Uploader interface {
@@ -25,11 +27,18 @@ type S3Uploader interface {
 }
 
 func NewS3Service(cfg configs.AwsConfig) *S3Service {
+	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
+	secretKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
+
+	if accessKey == "" || secretKey == "" {
+		log.Fatal("AWS credentials are not set. Please set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY")
+	}
+
 	awsCfg, err := config.LoadDefaultConfig(context.TODO(),
 		config.WithRegion(cfg.Region),
 		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
-			getEnv("AWS_ACCESS_KEY_ID", ""),
-			getEnv("AWS_SECRET_ACCESS_KEY", ""),
+			accessKey,
+			secretKey,
 			"",
 		)),
 	)
@@ -42,13 +51,14 @@ func NewS3Service(cfg configs.AwsConfig) *S3Service {
 	return &S3Service{
 		client:     client,
 		bucketName: cfg.Bucket,
+		region:     cfg.Region,
 	}
 }
 
 func (s *S3Service) UploadFile(file *multipart.FileHeader, folder string) (string, error) {
 	src, err := file.Open()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to open file: %w", err)
 	}
 	defer src.Close()
 
@@ -58,42 +68,21 @@ func (s *S3Service) UploadFile(file *multipart.FileHeader, folder string) (strin
 		Bucket: aws.String(s.bucketName),
 		Key:    aws.String(fileName),
 		Body:   src,
-		ACL:    "public-read", 
 	})
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to upload to S3: %w", err)
 	}
 
-	url := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s", s.bucketName, getEnv("AWS_REGION", ""), fileName)
-
-	return url, nil
-}
-
-func getEnv(key, fallback string) string {
-	if value, exists := lookupEnv(key); exists {
-		return value
+	presignClient := s3.NewPresignClient(s.client)
+	presignedReq, err := presignClient.PresignGetObject(context.TODO(), &s3.GetObjectInput{
+		Bucket: aws.String(s.bucketName),
+		Key:    aws.String(fileName),
+	}, func(opts *s3.PresignOptions) {
+		opts.Expires = time.Hour * 24 * 7 
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to generate presigned URL: %w", err)
 	}
-	return fallback
-}
 
-func lookupEnv(key string) (string, bool) {
-	value := ""
-	if v := getenv(key); v != "" {
-		value = v
-		return value, true
-	}
-	return value, false
-}
-
-func getenv(key string) string {
-	return fmt.Sprintf("%s", (func() string {
-		if val, ok := lookup(key); ok {
-			return val
-		}
-		return ""
-	})())
-}
-
-func lookup(key string) (string, bool) {
-	return "", false 
+	return presignedReq.URL, nil
 }

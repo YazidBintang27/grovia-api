@@ -2,15 +2,14 @@ package responses
 
 import "time"
 
-type ToddlerResponse struct {
+type PredictResponse struct {
 	ID                int       `json:"id"`
-	ParentID          int       `json:"parentID"`
-	LocationID        int       `json:"locationID"`
+	ToddlerID         int       `json:"toddlerID"`
 	Name              string    `json:"name"`
-	Birthdate         time.Time `json:"birthdate"`
-	Sex               string    `json:"sex"`
 	Height            float64   `json:"height"`
-	ProfilePicture    string    `json:"profilePicture"`
+	Age               int       `json:"age"`
+	Sex               string    `json:"sex"`
+	Zscore            float64   `json:"zscore"`
 	NutritionalStatus string    `json:"nutritionalStatus"`
 	CreatedAt         time.Time `json:"createdAt"`
 	UpdatedAt         time.Time `json:"updatedAt"`
