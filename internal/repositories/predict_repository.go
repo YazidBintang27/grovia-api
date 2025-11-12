@@ -25,10 +25,13 @@ type predictRepository struct {
 func (p *predictRepository) GetAllPredictAllLocation() ([]models.Predict, error) {
 	var predicts []models.Predict
 
-	err := p.db.Find(&predicts).Error
+	tx := p.db.Order("created_at DESC").Find(&predicts)
 
-	if err != nil {
-		return nil, err
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
 	}
 
 	return predicts, nil
@@ -76,10 +79,13 @@ func (p *predictRepository) DeletePredictByID(id int, locationID int) error {
 func (p *predictRepository) GetAllPredict(locationID int) ([]models.Predict, error) {
 	var predicts []models.Predict
 
-	err := p.db.Where("location_id = ?", locationID).Find(&predicts).Error
+	tx := p.db.Where("location_id = ?", locationID).Order("created_at DESC").Find(&predicts)
 
-	if err != nil {
-		return nil, err
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+	if tx.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
 	}
 
 	return predicts, nil
@@ -89,7 +95,7 @@ func (p *predictRepository) GetAllPredict(locationID int) ([]models.Predict, err
 func (p *predictRepository) GetAllPredictByToddlerID(locationID, toddlerID int) ([]models.Predict, error) {
 	var predicts []models.Predict
 
-	tx := p.db.Where("location_id = ? AND toddler_id = ?", locationID, toddlerID).First(&predicts)
+	tx := p.db.Where("location_id = ? AND toddler_id = ?", locationID, toddlerID).Order("created_at DESC").Find(&predicts)
 
 	if tx.Error != nil {
 		return nil, tx.Error

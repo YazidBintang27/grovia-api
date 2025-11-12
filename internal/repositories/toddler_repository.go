@@ -10,13 +10,13 @@ import (
 
 type ToddlerRepository interface {
 	CreateToddler(toddler *models.Toddler) (*models.Toddler, error)
-	GetAllToddler(locationID int) ([]models.Toddler, error)
+	GetAllToddler(locationID int, name string) ([]models.Toddler, error)
 	GetToddlerByID(id, locationID int) (*models.Toddler, error)
 	UpdateToddlerByID(id, locationID int, toddler *models.Toddler) (*models.Toddler, error)
 	DeleteToddlerByID(id, locationID int) error
 	FindParentIDByID(id, locationID int) (*int, error)
 	FindToddlerByName(parentID int, name string) (bool, *models.Toddler, error)
-	GetAllToddlerAllLocation() ([]models.Toddler, error)
+	GetAllToddlerAllLocation(name string) ([]models.Toddler, error)
 }
 
 type toddlerRepository struct {
@@ -24,15 +24,17 @@ type toddlerRepository struct {
 }
 
 // GetAllToddlerAllLocation implements ToddlerRepository.
-func (t *toddlerRepository) GetAllToddlerAllLocation() ([]models.Toddler, error) {
+func (t *toddlerRepository) GetAllToddlerAllLocation(name string) ([]models.Toddler, error) {
 	var toddlers []models.Toddler
+	db := t.db.Model(&toddlers)
 
-	err := t.db.Find(&toddlers).Error
-
-	if err != nil {
-		return nil, err
+	if strings.TrimSpace(name) != "" {
+		normalizedName := strings.ToLower(strings.ReplaceAll(name, " ", ""))
+		db = db.Where("REPLACE(LOWER(name), ' ', '') LIKE ?", "%"+normalizedName+"%")
 	}
-	return toddlers, nil
+
+	err := db.Find(&toddlers).Error
+	return toddlers, err
 }
 
 // FindToddlerByName implements ToddlerRepository.
@@ -90,16 +92,19 @@ func (t *toddlerRepository) DeleteToddlerByID(id int, locationID int) error {
 }
 
 // GetAllToddler implements ToddlerRepository.
-func (t *toddlerRepository) GetAllToddler(locationID int) ([]models.Toddler, error) {
+func (t *toddlerRepository) GetAllToddler(locationID int, name string) ([]models.Toddler, error) {
 	var toddlers []models.Toddler
+	db := t.db.Model(&toddlers)
 
-	err := t.db.Where("location_id = ?", locationID).Find(&toddlers).Error
+	db = db.Where("location_id = ?", locationID)
 
-	if err != nil {
-		return nil, err
+	if strings.TrimSpace(name) != "" {
+		normalizedName := strings.ToLower(strings.ReplaceAll(name, " ", ""))
+		db = db.Where("REPLACE(LOWER(name), ' ', '') LIKE ?", "%"+normalizedName+"%")
 	}
 
-	return toddlers, nil
+	err := db.Find(&toddlers).Error
+	return toddlers, err
 }
 
 // GetToddlerByID implements ToddlerRepository.

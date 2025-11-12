@@ -12,7 +12,7 @@ var FirebaseApp *firebase.App
 
 func InitFirebase() {
 	ctx := context.Background()
-	opt := option.WithCredentialsFile("grovia-api-firebase-adminsdk-fbsvc-53faecaa0f.json")
+	opt := option.WithCredentialsFile("grovia-mobile-app-firebase-adminsdk-fbsvc-5725680d24.json")
 
 	app, err := firebase.NewApp(ctx, nil, opt)
 	if err != nil {

@@ -2,13 +2,14 @@ package repositories
 
 import (
 	"grovia/internal/models"
+	"strings"
 
 	"gorm.io/gorm"
 )
 
 type LocationRepository interface {
 	CreateLocation(location *models.Location) (*models.Location, error)
-	GetAllLocation() ([]models.Location, error)
+	GetAllLocation(name string) ([]models.Location, error)
 	GetLocationByID(id int) (*models.Location, error)
 	UpdateLocationByID(id int, location *models.Location) (*models.Location, error)
 	DeleteLocationByID(id int) error
@@ -39,14 +40,18 @@ func (l *locationRepository) DeleteLocationByID(id int) error {
 }
 
 // GetAllLocation implements LocationRepository.
-func (l *locationRepository) GetAllLocation() ([]models.Location, error) {
+func (l *locationRepository) GetAllLocation(name string) ([]models.Location, error) {
 	var locations []models.Location
 
-	if err := l.db.Find(&locations).Error; err != nil {
-		return nil, err
+	db := l.db.Model(&locations)
+
+	if strings.TrimSpace(name) != "" {
+		normalizedName := strings.ToLower(strings.ReplaceAll(name, " ", ""))
+		db = db.Where("REPLACE(LOWER(name), ' ', '') LIKE ?", "%"+normalizedName+"%")
 	}
 
-	return locations, nil
+	err := db.Find(&locations).Error
+	return locations, err
 }
 
 // GetLocationByID implements LocationRepository.

@@ -13,7 +13,7 @@ import (
 
 type LocationService interface {
 	CreateLocation(req requests.LocationRequest) (*responses.LocationResponse, error)
-	GetAllLocation() ([]responses.LocationResponse, error)
+	GetAllLocation(name string) ([]responses.LocationResponse, error)
 	GetLocationByID(id int) (*responses.LocationResponse, error)
 	UpdateLocationByID(id int, req requests.LocationRequest) (*responses.LocationResponse, error)
 	DeleteLocationByID(id int) error
@@ -26,6 +26,13 @@ type locationService struct {
 
 // CreateLocation implements LocationService.
 func (l *locationService) CreateLocation(req requests.LocationRequest) (*responses.LocationResponse, error) {
+	if strings.TrimSpace(req.Name) == "" {
+		return nil, fmt.Errorf("nama lokasi tidak boleh kosong")
+	}
+	if strings.TrimSpace(req.Address) == "" {
+		return nil, fmt.Errorf("alamat lokasi tidak boleh kosong")
+	}
+
 	locationMapping := models.Location{
 		Name:    req.Name,
 		Address: req.Address,
@@ -68,8 +75,8 @@ func (l *locationService) DeleteLocationByID(id int) error {
 }
 
 // GetAllLocation implements LocationService.
-func (l *locationService) GetAllLocation() ([]responses.LocationResponse, error) {
-	locations, err := l.repo.GetAllLocation()
+func (l *locationService) GetAllLocation(name string) ([]responses.LocationResponse, error) {
+	locations, err := l.repo.GetAllLocation(name)
 
 	if err != nil {
 		return nil, err

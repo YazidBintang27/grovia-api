@@ -166,7 +166,9 @@ func (u *UserHandler) GetUserByID(ctx *fiber.Ctx) error {
 
 func (u *UserHandler) GetUsersByRole(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
+	locationID := ctx.Locals("location_id").(int)
 	role := ctx.Locals("role")
+	name := ctx.Query("name")
 
 	if !ok || userID == 0 {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(responses.BaseResponse{
@@ -180,7 +182,7 @@ func (u *UserHandler) GetUsersByRole(ctx *fiber.Ctx) error {
 		})
 	}
 
-	user, err := u.service.GetUsersByRole(role.(string))
+	user, err := u.service.GetUsersByRole(role.(string), name, locationID)
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{

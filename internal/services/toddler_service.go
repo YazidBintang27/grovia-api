@@ -12,12 +12,12 @@ import (
 type ToddlerService interface {
 	CreateToddler(req requests.CreateToddlerRequest) (*responses.ToddlerResponse, *responses.PredictResponse, error)
 	CreateToddlerWithParent(toddlerReq requests.CreateToddlerRequest, parentReq requests.CreateParentRequest) (*responses.ToddlerResponse, *responses.ParentResponse, *responses.PredictResponse, error)
-	GetAllToddler(locationID int) ([]responses.ToddlerResponse, error)
+	GetAllToddler(locationID int, name string) ([]responses.ToddlerResponse, error)
 	GetToddlerByID(id, locationID int) (*responses.ToddlerResponse, error)
 	UpdateToddlerByID(id, locationID int, req requests.UpdateToddlerRequest) (*responses.ToddlerResponse, *responses.PredictResponse, error)
 	DeleteToddlerByID(id, locationID int) error
 	CheckToddlerExists(phoneNumber, name string) (bool, *models.Toddler, error)
-	GetAllToddlerAllLocation() ([]responses.ToddlerResponse, error)
+	GetAllToddlerAllLocation(name string) ([]responses.ToddlerResponse, error)
 }
 
 type toddlerService struct {
@@ -28,8 +28,8 @@ type toddlerService struct {
 }
 
 // GetAllToddlerAllLocation implements ToddlerService.
-func (t *toddlerService) GetAllToddlerAllLocation() ([]responses.ToddlerResponse, error) {
-	toddlers, err := t.repo.GetAllToddlerAllLocation()
+func (t *toddlerService) GetAllToddlerAllLocation(name string) ([]responses.ToddlerResponse, error) {
+	toddlers, err := t.repo.GetAllToddlerAllLocation(name)
 
 	if err != nil {
 		return nil, err
@@ -143,7 +143,33 @@ func (t *toddlerService) CreateToddler(req requests.CreateToddlerRequest) (*resp
 }
 
 // CreateToddlerWithParent implements ToddlerService.
-func (t *toddlerService) CreateToddlerWithParent(toddlerReq requests.CreateToddlerRequest, parentReq requests.CreateParentRequest) (*responses.ToddlerResponse, *responses.ParentResponse, *responses.PredictResponse, error) {
+func (t *toddlerService) CreateToddlerWithParent(
+	toddlerReq requests.CreateToddlerRequest,
+	parentReq requests.CreateParentRequest,
+) (*responses.ToddlerResponse, *responses.ParentResponse, *responses.PredictResponse, error) {
+	if strings.TrimSpace(parentReq.Name) == "" ||
+		strings.TrimSpace(parentReq.PhoneNumber) == "" ||
+		strings.TrimSpace(parentReq.Address) == "" ||
+		strings.TrimSpace(parentReq.Nik) == "" ||
+		strings.TrimSpace(parentReq.Job) == "" {
+		return nil, nil, nil, fmt.Errorf("semua field parent (name, phone_number, address, nik, job) wajib diisi")
+	}
+
+	if strings.TrimSpace(toddlerReq.Name) == "" ||
+		strings.TrimSpace(toddlerReq.Sex) == "" ||
+		toddlerReq.Height <= 0 ||
+		toddlerReq.Birthdate.IsZero() {
+		return nil, nil, nil, fmt.Errorf("semua field toddler (name, birthdate, sex, height) wajib diisi dan valid")
+	}
+
+	if len(parentReq.PhoneNumber) < 10 || len(parentReq.PhoneNumber) > 15 {
+		return nil, nil, nil, fmt.Errorf("nomor telepon harus memiliki panjang antara 10 sampai 15 digit")
+	}
+
+	if len(parentReq.Nik) != 16 {
+		return nil, nil, nil, fmt.Errorf("NIK harus memiliki tepat 16 digit")
+	}
+
 	parentMapping := models.Parent{
 		Name:        parentReq.Name,
 		PhoneNumber: parentReq.PhoneNumber,
@@ -173,7 +199,6 @@ func (t *toddlerService) CreateToddlerWithParent(toddlerReq requests.CreateToddl
 	}
 
 	predict, err := t.predict.CreateIndividualPredict(toddlerReq, parentReq.LocationID, toddler.ID)
-
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -190,7 +215,6 @@ func (t *toddlerService) CreateToddlerWithParent(toddlerReq requests.CreateToddl
 	}
 
 	_, err = t.repo.UpdateToddlerByID(toddler.ID, parentReq.LocationID, &toddlerModel)
-
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -244,8 +268,8 @@ func (t *toddlerService) DeleteToddlerByID(id int, locationID int) error {
 }
 
 // GetAllToddler implements ToddlerService.
-func (t *toddlerService) GetAllToddler(locationID int) ([]responses.ToddlerResponse, error) {
-	toddlers, err := t.repo.GetAllToddler(locationID)
+func (t *toddlerService) GetAllToddler(locationID int, name string) ([]responses.ToddlerResponse, error) {
+	toddlers, err := t.repo.GetAllToddler(locationID, name)
 
 	if err != nil {
 		return nil, err
@@ -257,7 +281,7 @@ func (t *toddlerService) GetAllToddler(locationID int) ([]responses.ToddlerRespo
 		toddlerResponse = append(toddlerResponse, responses.ToddlerResponse{
 			ID:                v.ID,
 			ParentID:          v.ParentID,
-			LocationID:        v.Parent.LocationID,
+			LocationID:        v.LocationID,
 			Name:              v.Name,
 			Birthdate:         v.Birthdate,
 			Sex:               v.Sex,
@@ -304,6 +328,38 @@ func (t *toddlerService) UpdateToddlerByID(
 	req requests.UpdateToddlerRequest,
 ) (*responses.ToddlerResponse, *responses.PredictResponse, error) {
 
+	toddlerRequest := requests.CreateToddlerRequest{}
+	if req.Name != nil {
+		toddlerRequest.Name = *req.Name
+	}
+	if req.Birthdate != nil {
+		toddlerRequest.Birthdate = *req.Birthdate
+	}
+	if req.Sex != "" {
+		toddlerRequest.Sex = req.Sex
+	}
+	if req.Height != nil {
+		toddlerRequest.Height = *req.Height
+	}
+	if req.NutritionalStatus != nil {
+		toddlerRequest.NutritionalStatus = *req.NutritionalStatus
+	}
+	if req.LocationID != nil {
+		toddlerRequest.LocationID = *req.LocationID
+	}
+	if req.PhoneNumber != nil {
+		toddlerRequest.PhoneNumber = *req.PhoneNumber
+	}
+
+	predict, err := t.predict.CreateIndividualPredict(
+		toddlerRequest,
+		locationID,
+		id,
+	)
+	if err != nil {
+		return nil, nil, fmt.Errorf("gagal membuat prediksi: %w", err)
+	}
+
 	if req.Name != nil && strings.TrimSpace(*req.Name) == "" {
 		return nil, nil, fmt.Errorf("nama tidak boleh kosong")
 	}
@@ -321,7 +377,6 @@ func (t *toddlerService) UpdateToddlerByID(
 	}
 
 	var url string
-	var err error
 
 	if req.ProfilePicture != nil && req.ProfilePicture.Filename != "" && req.ProfilePicture.Size > 0 {
 		url, err = t.s3.UploadFile(req.ProfilePicture, "toddlers")
@@ -361,60 +416,31 @@ func (t *toddlerService) UpdateToddlerByID(
 	if req.LocationID != nil {
 		toddlerMapping.LocationID = *req.LocationID
 	}
+	toddlerMapping.NutritionalStatus = predict.NutritionalStatus
 
 	toddler, err := t.repo.UpdateToddlerByID(id, locationID, &toddlerMapping)
 	if err != nil {
 		return nil, nil, fmt.Errorf("gagal update data toddler: %w", err)
 	}
 
-	toddlerRequest := requests.CreateToddlerRequest{}
-	if req.Name != nil {
-		toddlerRequest.Name = *req.Name
-	}
-	if req.Birthdate != nil {
-		toddlerRequest.Birthdate = *req.Birthdate
-	}
-	if req.Sex != "" {
-		toddlerRequest.Sex = req.Sex
-	}
-	if req.Height != nil {
-		toddlerRequest.Height = *req.Height
-	}
-	if req.NutritionalStatus != nil {
-		toddlerRequest.NutritionalStatus = *req.NutritionalStatus
-	}
-	if req.LocationID != nil {
-		toddlerRequest.LocationID = *req.LocationID
-	}
-	if req.PhoneNumber != nil {
-		toddlerRequest.PhoneNumber = *req.PhoneNumber
-	}
-
-	predict, err := t.predict.CreateIndividualPredict(
-		toddlerRequest,
-		toddlerRequest.LocationID,
-		id,
-	)
-	if err != nil {
-		return nil, nil, fmt.Errorf("gagal membuat prediksi: %w", err)
-	}
-
 	toddlerResponse := responses.ToddlerResponse{
-		ID:             toddler.ID,
-		ParentID:       toddler.ParentID,
-		LocationID:     toddler.LocationID,
-		Name:           toddler.Name,
-		Birthdate:      toddler.Birthdate,
-		Sex:            toddler.Sex,
-		Height:         toddler.Height,
-		ProfilePicture: toddler.ProfilePicture,
-		CreatedAt:      toddler.CreatedAt,
-		UpdatedAt:      toddler.UpdatedAt,
+		ID:                toddler.ID,
+		ParentID:          toddler.ParentID,
+		LocationID:        toddler.LocationID,
+		Name:              toddler.Name,
+		Birthdate:         toddler.Birthdate,
+		Sex:               toddler.Sex,
+		Height:            toddler.Height,
+		NutritionalStatus: toddler.NutritionalStatus,
+		ProfilePicture:    toddler.ProfilePicture,
+		CreatedAt:         toddler.CreatedAt,
+		UpdatedAt:         toddler.UpdatedAt,
 	}
 
 	predictResponse := responses.PredictResponse{
 		ID:                predict.ID,
 		ToddlerID:         predict.ToddlerID,
+		Name:              predict.Name,
 		Height:            predict.Height,
 		Age:               predict.Age,
 		Sex:               predict.Sex,

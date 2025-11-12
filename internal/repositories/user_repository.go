@@ -2,6 +2,7 @@ package repositories
 
 import (
 	"grovia/internal/models"
+	"strings"
 
 	"gorm.io/gorm"
 )
@@ -13,7 +14,7 @@ type UserRepository interface {
 	UpdateUser(id int, user *models.User) (*models.User, error)
 	DeleteUser(id int) error
 	FindRoleById(id int) (string, error)
-	FindUsersByRole(roles []string) ([]models.User, error)
+	FindUsersByRole(roles []string, name string, locationID int) ([]models.User, error)
 }
 
 type userRepository struct {
@@ -21,9 +22,22 @@ type userRepository struct {
 }
 
 // FindUsersByRole implements UserRepository.
-func (u *userRepository) FindUsersByRole(roles []string) ([]models.User, error) {
+func (u *userRepository) FindUsersByRole(roles []string, name string, locationID int) ([]models.User, error) {
 	var users []models.User
-	err := u.db.Where("role IN ?", roles).Find(&users).Error
+	db := u.db.Model(&models.User{})
+
+	db = db.Where("role IN ?", roles)
+
+	if locationID != 1 {
+		db = db.Where("location_id = ?", locationID)
+	}
+
+	if strings.TrimSpace(name) != "" {
+		normalizedName := strings.ToLower(strings.ReplaceAll(name, " ", ""))
+		db = db.Where("REPLACE(LOWER(name), ' ', '') LIKE ?", "%"+normalizedName+"%")
+	}
+
+	err := db.Find(&users).Error
 	return users, err
 }
 

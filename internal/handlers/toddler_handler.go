@@ -135,6 +135,7 @@ func (t *ToddlerHandler) GetAllToddler(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	locationID := ctx.Locals("location_id").(int)
 
+	name := ctx.Query("name")
 	if !ok || userID == 0 {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(responses.BaseResponse{
 			Success: false,
@@ -147,7 +148,7 @@ func (t *ToddlerHandler) GetAllToddler(ctx *fiber.Ctx) error {
 		})
 	}
 
-	toddlers, err := t.service.GetAllToddler(locationID)
+	toddlers, err := t.service.GetAllToddler(locationID, name)
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
@@ -427,6 +428,7 @@ func (t *ToddlerHandler) CheckToddlerExists(ctx *fiber.Ctx) error {
 
 func (t *ToddlerHandler) GetAllToddlerAllLocation(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
+	name := ctx.Query("name")
 
 	if !ok || userID == 0 {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(responses.BaseResponse{
@@ -440,7 +442,7 @@ func (t *ToddlerHandler) GetAllToddlerAllLocation(ctx *fiber.Ctx) error {
 		})
 	}
 
-	toddlerResponses, err := t.service.GetAllToddlerAllLocation()
+	toddlerResponses, err := t.service.GetAllToddlerAllLocation(name)
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{

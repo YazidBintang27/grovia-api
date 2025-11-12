@@ -15,7 +15,7 @@ import (
 type UserService interface {
 	CreateUser(req requests.CreateUserRequest, createdBy string, locationID int) (*responses.UserResponse, error)
 	GetCurrentUser(id int) (*responses.UserResponse, error)
-	GetUsersByRole(requesterRole string) ([]responses.UserResponse, error)
+	GetUsersByRole(requesterRole, name string, locationID int) ([]responses.UserResponse, error)
 	GetUserById(targetUserID int, accesorRole string) (*responses.UserResponse, error)
 	UpdateCurrentUser(id int, req requests.UpdateUserRequest) (*responses.UserResponse, error)
 	UpdateUserByID(targetUserID int, req requests.UpdateUserRequest, updaterRole string) (*responses.UserResponse, error)
@@ -68,7 +68,7 @@ func (u *userService) GetUserById(targetUserID int, accesorRole string) (*respon
 }
 
 // GetUsersByRole implements UserService.
-func (u *userService) GetUsersByRole(requesterRole string) ([]responses.UserResponse, error) {
+func (u *userService) GetUsersByRole(requesterRole, name string, locationID int) ([]responses.UserResponse, error) {
 	var roles []string
 
 	switch requesterRole {
@@ -80,7 +80,7 @@ func (u *userService) GetUsersByRole(requesterRole string) ([]responses.UserResp
 		return nil, errors.New("forbidden: role not allowed")
 	}
 
-	users, err := u.repo.FindUsersByRole(roles)
+	users, err := u.repo.FindUsersByRole(roles, name, locationID)
 	if err != nil {
 		return nil, err
 	}
@@ -127,13 +127,30 @@ func (u *userService) CreateUser(req requests.CreateUserRequest, createdBy strin
 		return nil, fmt.Errorf("role %s tidak diizinkan membuat user dengan role %s", createdBy, req.Role)
 	}
 
+	if strings.TrimSpace(req.Name) == "" ||
+		strings.TrimSpace(req.PhoneNumber) == "" ||
+		strings.TrimSpace(req.Address) == "" ||
+		strings.TrimSpace(req.Nik) == "" ||
+		strings.TrimSpace(req.Role) == "" ||
+		strings.TrimSpace(req.Password) == "" {
+		return nil, fmt.Errorf("semua field (name, phone_number, address, nik, role, password) wajib diisi")
+	}
+
+	if len(req.PhoneNumber) < 10 || len(req.PhoneNumber) > 15 {
+		return nil, fmt.Errorf("nomor telepon harus memiliki panjang antara 10 sampai 15 digit")
+	}
+
+	if len(req.Nik) != 16 {
+		return nil, fmt.Errorf("NIK harus memiliki tepat 16 digit")
+	}
+
 	var url string
 	var err error
 
-	if req.ProfilePicture != nil {
+	if req.ProfilePicture != nil && req.ProfilePicture.Filename != "" && req.ProfilePicture.Size > 0 {
 		url, err = u.s3.UploadFile(req.ProfilePicture, "users")
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("gagal upload foto profil: %v", err)
 		}
 	}
 
@@ -230,9 +247,6 @@ func (u *userService) UpdateCurrentUser(id int, req requests.UpdateUserRequest) 
 			if len(phone) < 10 || len(phone) > 15 {
 				return nil, errors.New("nomor telepon harus antara 10–15 digit")
 			}
-			if !regexp.MustCompile(`^[0-9]+$`).MatchString(phone) {
-				return nil, errors.New("nomor telepon hanya boleh berisi angka")
-			}
 		}
 	}
 	if req.Nik != nil {
@@ -240,9 +254,6 @@ func (u *userService) UpdateCurrentUser(id int, req requests.UpdateUserRequest) 
 		if nik != "" {
 			if len(nik) != 16 {
 				return nil, errors.New("nik harus 16 digit")
-			}
-			if !regexp.MustCompile(`^[0-9]+$`).MatchString(nik) {
-				return nil, errors.New("nik hanya boleh berisi angka")
 			}
 		}
 	}
