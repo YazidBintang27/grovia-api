@@ -25,12 +25,14 @@ func ToddlerRouter(db *gorm.DB, app *fiber.App, s3 *services.S3Service, predict 
 	r.Post("/", toddlerHandler.CreateToddler)
 
 	r.Post("/with-parent", toddlerHandler.CreateToddlerWithParent)
-	
+
 	r.Get("/check-toddler", toddlerHandler.CheckToddlerExists)
 
 	r.Get("/", toddlerHandler.GetAllToddler)
 
 	r.Get("/all", toddlerHandler.GetAllToddlerAllLocation)
+
+	r.Patch("/without-predict/:id", toddlerHandler.UpdateToddlerByIDWithoutPredict)
 
 	r.Get("/:id", toddlerHandler.GetToddlerByID)
 

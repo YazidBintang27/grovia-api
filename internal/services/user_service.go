@@ -113,8 +113,8 @@ func (u *userService) DeleteUserByID(targetUserID int, updaterRole string) error
 		return err
 	}
 
-	if !u.rolePermission(targetRole, updaterRole) {
-		return fmt.Errorf("%s tidak boleh mengubah role ke %s", updaterRole, targetRole)
+	if !u.rolePermission(updaterRole, targetRole) {
+		return fmt.Errorf("%s tidak boleh menghapus role ke %s", updaterRole, targetRole)
 	}
 
 	return u.repo.DeleteUser(targetUserID)

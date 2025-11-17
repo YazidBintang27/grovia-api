@@ -39,12 +39,20 @@ func (p *predictRepository) GetAllPredictAllLocation() ([]models.Predict, error)
 
 // FindToddlerIDByID implements PredictRepository.
 func (p *predictRepository) FindToddlerIDByID(id int, locationID int) (*int, error) {
-	var toddler models.Toddler
-	err := p.db.Select("id").Where("id = ? AND location_id = ?", id, locationID).First(&toddler).Error
-	if err != nil {
-		return nil, err
+	var predict models.Predict
+	if locationID == 1 {
+		err := p.db.Select("toddler_id").Where("id = ? ", id).First(&predict).Error
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err := p.db.Select("toddler_id").Where("id = ? AND location_id = ?", id, locationID).First(&predict).Error
+		if err != nil {
+			return nil, err
+		}
 	}
-	return &toddler.ID, nil
+
+	return &predict.ToddlerID, nil
 }
 
 // CreateIndividualPredict implements PredictRepository.
@@ -65,13 +73,24 @@ func (p *predictRepository) DeletePredictByID(id int, locationID int) error {
 		return err
 	}
 
-	tx := p.db.Where("id = ? AND location_id = ? AND toddler_id = ?", id, locationID, toddlerID)
-	if tx.Error != nil {
-		return tx.Error
+	if locationID == 1 {
+		tx := p.db.Where("id = ? AND toddler_id = ?", id, toddlerID).Delete(&models.Predict{})
+		if tx.Error != nil {
+			return tx.Error
+		}
+		if tx.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+	} else {
+		tx := p.db.Where("id = ? AND toddler_id = ? AND location_id = ?", id, toddlerID, locationID).Delete(&models.Predict{})
+		if tx.Error != nil {
+			return tx.Error
+		}
+		if tx.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
 	}
-	if tx.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
-	}
+
 	return nil
 }
 
@@ -95,15 +114,25 @@ func (p *predictRepository) GetAllPredict(locationID int) ([]models.Predict, err
 func (p *predictRepository) GetAllPredictByToddlerID(locationID, toddlerID int) ([]models.Predict, error) {
 	var predicts []models.Predict
 
-	tx := p.db.Where("location_id = ? AND toddler_id = ?", locationID, toddlerID).Order("created_at DESC").Find(&predicts)
+	if locationID == 1 {
+		tx := p.db.Where("toddler_id = ?", toddlerID).Order("created_at DESC").Find(&predicts)
 
-	if tx.Error != nil {
-		return nil, tx.Error
-	}
-	if tx.RowsAffected == 0 {
-		return nil, gorm.ErrRecordNotFound
-	}
+		if tx.Error != nil {
+			return nil, tx.Error
+		}
+		if tx.RowsAffected == 0 {
+			return nil, gorm.ErrRecordNotFound
+		}
+	} else {
+		tx := p.db.Where("location_id = ? AND toddler_id = ?", locationID, toddlerID).Order("created_at DESC").Find(&predicts)
 
+		if tx.Error != nil {
+			return nil, tx.Error
+		}
+		if tx.RowsAffected == 0 {
+			return nil, gorm.ErrRecordNotFound
+		}
+	}
 	return predicts, nil
 }
 

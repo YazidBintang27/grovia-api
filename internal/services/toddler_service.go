@@ -18,6 +18,7 @@ type ToddlerService interface {
 	DeleteToddlerByID(id, locationID int) error
 	CheckToddlerExists(phoneNumber, name string) (bool, *models.Toddler, error)
 	GetAllToddlerAllLocation(name string) ([]responses.ToddlerResponse, error)
+	UpdateToddlerByIDWithoutPredict(id, locationID int, req requests.UpdateToddlerRequest) (*responses.ToddlerResponse, error)
 }
 
 type toddlerService struct {
@@ -25,6 +26,77 @@ type toddlerService struct {
 	parentRepo repositories.ParentRepository
 	s3         *S3Service
 	predict    PredictService
+}
+
+// UpdateToddlerByIDWithoutPredict implements ToddlerService.
+func (t *toddlerService) UpdateToddlerByIDWithoutPredict(id int, locationID int, req requests.UpdateToddlerRequest) (*responses.ToddlerResponse, error) {
+	if req.Name != nil && strings.TrimSpace(*req.Name) == "" {
+		return nil, fmt.Errorf("nama tidak boleh kosong")
+	}
+	if req.Height != nil && *req.Height <= 0 {
+		return nil, fmt.Errorf("tinggi badan tidak boleh 0 atau negatif")
+	}
+	if req.Sex != "" && req.Sex != "M" && req.Sex != "F" {
+		return nil, fmt.Errorf("jenis kelamin harus M atau F")
+	}
+	if req.Birthdate != nil && req.Birthdate.IsZero() {
+		return nil, fmt.Errorf("tanggal lahir tidak valid")
+	}
+	if req.PhoneNumber != nil && strings.TrimSpace(*req.PhoneNumber) == "" {
+		return nil, fmt.Errorf("nomor telepon tidak boleh kosong")
+	}
+
+	var url string
+	var err error
+	if req.ProfilePicture != nil && req.ProfilePicture.Filename != "" && req.ProfilePicture.Size > 0 {
+		url, err = t.s3.UploadFile(req.ProfilePicture, "toddlers")
+		if err != nil {
+			return nil, fmt.Errorf("gagal upload foto: %v", err)
+		}
+	}
+
+	var parentID int
+	if req.PhoneNumber != nil {
+		parent, err := t.parentRepo.FindParentByPhoneNumber(*req.PhoneNumber)
+		if err != nil {
+			return nil, fmt.Errorf("orang tua dengan nomor HP %s tidak ditemukan", *req.PhoneNumber)
+		}
+		parentID = parent.ID
+	}
+
+	toddlerMapping := models.Toddler{}
+	if req.Name != nil {
+		toddlerMapping.Name = *req.Name
+	}
+	if req.PhoneNumber != nil {
+		toddlerMapping.ParentID = parentID
+	}
+	if url != "" {
+		toddlerMapping.ProfilePicture = url
+	}
+	if req.LocationID != nil {
+		toddlerMapping.LocationID = *req.LocationID
+	}
+	toddler, err := t.repo.UpdateToddlerByID(id, locationID, &toddlerMapping)
+	if err != nil {
+		return nil, fmt.Errorf("gagal update data toddler: %w", err)
+	}
+
+	toddlerResponse := responses.ToddlerResponse{
+		ID:                toddler.ID,
+		ParentID:          toddler.ParentID,
+		LocationID:        toddler.LocationID,
+		Name:              toddler.Name,
+		Birthdate:         toddler.Birthdate,
+		Sex:               toddler.Sex,
+		Height:            toddler.Height,
+		NutritionalStatus: toddler.NutritionalStatus,
+		ProfilePicture:    toddler.ProfilePicture,
+		CreatedAt:         toddler.CreatedAt,
+		UpdatedAt:         toddler.UpdatedAt,
+	}
+
+	return &toddlerResponse, nil
 }
 
 // GetAllToddlerAllLocation implements ToddlerService.

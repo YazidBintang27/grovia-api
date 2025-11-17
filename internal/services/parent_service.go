@@ -12,21 +12,70 @@ import (
 )
 
 type ParentService interface {
-	GetAllParent(locationID int) ([]responses.ParentResponse, error)
+	CreateParent(req requests.CreateParentRequest) (*responses.ParentResponse, error)
+	GetAllParent(locationID int, name string) ([]responses.ParentResponse, error)
 	GetParentByID(id, locationID int) (*responses.ParentResponse, error)
 	UpdateParentByID(id, locationID int, req requests.UpdateParentRequest) (*responses.ParentResponse, error)
 	DeleteParentByID(id, locationID int) error
 	CheckPhoneExists(phoneNumber string) (*models.Parent, error)
-	GetAllParentAllLocation() ([]responses.ParentResponse, error)
+	GetAllParentAllLocation(name string) ([]responses.ParentResponse, error)
 }
 
 type parentService struct {
 	repo repositories.ParentRepository
 }
 
+// CreateParent implements ParentService.
+func (p *parentService) CreateParent(req requests.CreateParentRequest) (*responses.ParentResponse, error) {
+	if strings.TrimSpace(req.Name) == "" ||
+		strings.TrimSpace(req.PhoneNumber) == "" ||
+		strings.TrimSpace(req.Address) == "" ||
+		strings.TrimSpace(req.Nik) == "" ||
+		strings.TrimSpace(req.Job) == "" {
+		return nil, fmt.Errorf("semua field parent (name, phone_number, address, nik, job) wajib diisi")
+	}
+
+	if len(req.PhoneNumber) < 10 || len(req.PhoneNumber) > 15 {
+		return nil, fmt.Errorf("nomor telepon harus memiliki panjang antara 10 sampai 15 digit")
+	}
+
+	if len(req.Nik) != 16 {
+		return nil, fmt.Errorf("NIK harus memiliki tepat 16 digit")
+	}
+
+	parentMapping := models.Parent{
+		Name:        req.Name,
+		PhoneNumber: req.PhoneNumber,
+		Address:     req.Address,
+		Nik:         req.Nik,
+		Job:         req.Job,
+		LocationID:  req.LocationID,
+	}
+
+	parent, err := p.repo.CreateParent(&parentMapping)
+
+	if err != nil {
+		return nil, err
+	}
+
+	parentResp := responses.ParentResponse{
+		ID:          parent.ID,
+		LocationID:  parent.LocationID,
+		Name:        parent.Name,
+		PhoneNumber: parent.PhoneNumber,
+		Address:     parent.Address,
+		Nik:         parent.Nik,
+		Job:         parent.Job,
+		CreatedAt:   parent.CreatedAt,
+		UpdatedAt:   parent.UpdatedAt,
+	}
+
+	return &parentResp, nil
+}
+
 // GetAllParentAllLocation implements ParentService.
-func (p *parentService) GetAllParentAllLocation() ([]responses.ParentResponse, error) {
-	parents, err := p.repo.GetAllParentAllLocation()
+func (p *parentService) GetAllParentAllLocation(name string) ([]responses.ParentResponse, error) {
+	parents, err := p.repo.GetAllParentAllLocation(name)
 
 	if err != nil {
 		return nil, err
@@ -61,8 +110,8 @@ func (p *parentService) DeleteParentByID(id int, locationID int) error {
 }
 
 // GetAllParent implements ParentService.
-func (p *parentService) GetAllParent(locationID int) ([]responses.ParentResponse, error) {
-	parents, err := p.repo.GetAllParent(locationID)
+func (p *parentService) GetAllParent(locationID int, name string) ([]responses.ParentResponse, error) {
+	parents, err := p.repo.GetAllParent(locationID, name)
 
 	if err != nil {
 		return nil, err

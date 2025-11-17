@@ -23,6 +23,8 @@ func ParentRouter(db *gorm.DB, app *fiber.App) {
 
 	r.Get("/check-phone", parentHandler.CheckPhoneExists)
 
+	r.Post("/", parentHandler.CreateParent)
+
 	r.Get("/", parentHandler.GetAllParent)
 
 	r.Get("/all", parentHandler.GetAllPredictAllLocation)

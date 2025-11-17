@@ -3,18 +3,19 @@ package repositories
 import (
 	"errors"
 	"grovia/internal/models"
+	"strings"
 
 	"gorm.io/gorm"
 )
 
 type ParentRepository interface {
 	CreateParent(parent *models.Parent) (*models.Parent, error)
-	GetAllParent(locationID int) ([]models.Parent, error)
+	GetAllParent(locationID int, name string) ([]models.Parent, error)
 	GetParentByID(id, locationID int) (*models.Parent, error)
 	UpdateParentByID(id, locationID int, parent *models.Parent) (*models.Parent, error)
 	DeleteParentByID(id, locationID int) error
 	FindParentByPhoneNumber(phoneNumber string) (*models.Parent, error)
-	GetAllParentAllLocation() ([]models.Parent, error)
+	GetAllParentAllLocation(name string) ([]models.Parent, error)
 }
 
 type parentRepository struct {
@@ -22,16 +23,18 @@ type parentRepository struct {
 }
 
 // GetAllParentAllLocation implements ParentRepository.
-func (p *parentRepository) GetAllParentAllLocation() ([]models.Parent, error) {
+func (p *parentRepository) GetAllParentAllLocation(name string) ([]models.Parent, error) {
 	var parents []models.Parent
 
-	err := p.db.Find(&parents).Error
+	db := p.db.Model(&parents)
 
-	if err != nil {
-		return nil, err
+	if strings.TrimSpace(name) != "" {
+		normalizedName := strings.ToLower(strings.ReplaceAll(name, " ", ""))
+		db = db.Where("REPLACE(LOWER(name), ' ', '') LIKE ?", "%"+normalizedName+"%")
 	}
 
-	return parents, nil
+	err := db.Find(&parents).Error
+	return parents, err
 }
 
 // CreateParent implements ParentRepository.
@@ -57,62 +60,107 @@ func (p *parentRepository) FindParentByPhoneNumber(phoneNumber string) (*models.
 
 // DeleteParentByID implements ParentRepository.
 func (p *parentRepository) DeleteParentByID(id, locationID int) error {
-	tx := p.db.Where("id = ? AND location_id = ?", id, locationID).Delete(&models.Parent{})
-	if tx.Error != nil {
-		return tx.Error
-	}
-	if tx.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
+	if locationID == 1 {
+		tx := p.db.Where("id = ?", id).Delete(&models.Parent{})
+		if tx.Error != nil {
+			return tx.Error
+		}
+		if tx.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+	} else {
+		tx := p.db.Where("id = ? AND location_id = ?", id, locationID).Delete(&models.Parent{})
+		if tx.Error != nil {
+			return tx.Error
+		}
+		if tx.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
 	}
 	return nil
 }
 
 // GetAllParent implements ParentRepository.
-func (p *parentRepository) GetAllParent(locationID int) ([]models.Parent, error) {
+func (p *parentRepository) GetAllParent(locationID int, name string) ([]models.Parent, error) {
 	var parents []models.Parent
 
-	err := p.db.Where("location_id = ?", locationID).Find(&parents).Error
+	db := p.db.Model(&parents)
 
-	if err != nil {
-		return nil, err
+	db = db.Where("location_id = ?", locationID)
+
+	if strings.TrimSpace(name) != "" {
+		normalizedName := strings.ToLower(strings.ReplaceAll(name, " ", ""))
+		db = db.Where("REPLACE(LOWER(name), ' ', '') LIKE ?", "%"+normalizedName+"%")
 	}
 
-	return parents, nil
+	err := db.Find(&parents).Error
+	return parents, err
 }
 
 // GetParentByID implements ParentRepository.
 func (p *parentRepository) GetParentByID(id, locationID int) (*models.Parent, error) {
 	var parent models.Parent
 
-	tx := p.db.Where("id = ? AND location_id = ?", id, locationID).Find(&parent)
+	if locationID == 1 {
+		tx := p.db.Where("id = ?", id).Find(&parent)
 
-	if tx.Error != nil {
-		return nil, tx.Error
-	}
-	if tx.RowsAffected == 0 {
-		return nil, gorm.ErrRecordNotFound
+		if tx.Error != nil {
+			return nil, tx.Error
+		}
+		if tx.RowsAffected == 0 {
+			return nil, gorm.ErrRecordNotFound
+		}
+	} else {
+		tx := p.db.Where("id = ? AND location_id = ?", id, locationID).Find(&parent)
+
+		if tx.Error != nil {
+			return nil, tx.Error
+		}
+		if tx.RowsAffected == 0 {
+			return nil, gorm.ErrRecordNotFound
+		}
 	}
 	return &parent, nil
 }
 
 // UpdateParentByID implements ParentRepository.
 func (p *parentRepository) UpdateParentByID(id, locationID int, parent *models.Parent) (*models.Parent, error) {
-	err := p.db.Model(parent).Where("id = ? AND location_id = ?", id, locationID).Updates(parent).Error
 
-	if err != nil {
-		return nil, err
+	if locationID == 1 {
+		err := p.db.Model(parent).Where("id = ?", id).Updates(parent).Error
+
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err := p.db.Model(parent).Where("id = ? AND location_id = ?", id, locationID).Updates(parent).Error
+
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	var parentResponse models.Parent
-	tx := p.db.Where("id = ? AND location_id = ?", id, locationID).First(&parentResponse)
 
-	if tx.Error != nil {
-		return nil, tx.Error
-	}
-	if tx.RowsAffected == 0 {
-		return nil, gorm.ErrRecordNotFound
-	}
+	if locationID == 1 {
+		tx := p.db.Where("id = ?", id).First(&parentResponse)
 
+		if tx.Error != nil {
+			return nil, tx.Error
+		}
+		if tx.RowsAffected == 0 {
+			return nil, gorm.ErrRecordNotFound
+		}
+	} else {
+		tx := p.db.Where("id = ? AND location_id = ?", id, locationID).First(&parentResponse)
+
+		if tx.Error != nil {
+			return nil, tx.Error
+		}
+		if tx.RowsAffected == 0 {
+			return nil, gorm.ErrRecordNotFound
+		}
+	}
 	return &parentResponse, nil
 }
 
