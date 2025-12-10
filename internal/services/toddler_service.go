@@ -150,7 +150,7 @@ func (t *toddlerService) CreateToddler(req requests.CreateToddlerRequest) (*resp
 		Birthdate:  req.Birthdate,
 		Sex:        req.Sex,
 		Height:     req.Height,
-		LocationID: req.LocationID,
+		LocationID: parent.LocationID,
 	}
 
 	if err != nil {

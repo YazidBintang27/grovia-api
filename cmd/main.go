@@ -24,6 +24,7 @@ func main() {
 
 	migrations.Initiator(db)
 	seeds.SeedAdmin(db)
+	RunAllSeeds(db)
 
 	s3 := services.NewS3Service(cfg.Aws)
 	predictRepo := repositories.NewPredictRepository(db)
@@ -43,4 +44,11 @@ func InitiateRoutes(db *gorm.DB, s3 *services.S3Service, predict services.Predic
 	routes.UserRouter(app, db, s3)
 
 	log.Fatal(app.Listen(":8080"))
+}
+
+func RunAllSeeds(db *gorm.DB) {
+	locations := seeds.SeedLocations(db)
+	parents := seeds.SeedParents(db, locations)
+	seeds.SeedToddlers(db, locations, parents)
+	seeds.SeedUsers(db, locations)
 }

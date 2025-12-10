@@ -90,13 +90,25 @@ func (t *toddlerRepository) DeleteToddlerByID(id int, locationID int) error {
 	if err != nil {
 		return err
 	}
-	tx := t.db.Where("id = ? AND location_id = ? AND parent_id = ?", id, locationID, parentID).Delete(&models.Toddler{})
-	if tx.Error != nil {
-		return tx.Error
+
+	if locationID == 1 {
+		tx := t.db.Where("id = ? AND parent_id = ?", id, parentID).Delete(&models.Toddler{})
+		if tx.Error != nil {
+			return tx.Error
+		}
+		if tx.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
+	} else {
+		tx := t.db.Where("id = ? AND location_id = ? AND parent_id = ?", id, locationID, parentID).Delete(&models.Toddler{})
+		if tx.Error != nil {
+			return tx.Error
+		}
+		if tx.RowsAffected == 0 {
+			return gorm.ErrRecordNotFound
+		}
 	}
-	if tx.RowsAffected == 0 {
-		return gorm.ErrRecordNotFound
-	}
+
 	return nil
 }
 
