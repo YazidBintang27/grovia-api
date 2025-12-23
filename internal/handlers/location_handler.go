@@ -91,6 +91,8 @@ func (l *LocationHandler) GetAllLocation(ctx *fiber.Ctx) error {
 	role := ctx.Locals("role")
 
 	name := ctx.Query("name")
+	pageStr := ctx.Query("page")
+	limitStr := ctx.Query("limit")
 
 	if !ok || userID == 0 {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(responses.BaseResponse{
@@ -116,7 +118,7 @@ func (l *LocationHandler) GetAllLocation(ctx *fiber.Ctx) error {
 		})
 	}
 
-	locationsResponse, err := l.service.GetAllLocation(name)
+	locationsResponse, meta, err := l.service.GetAllLocation(name, pageStr, limitStr)
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
@@ -134,6 +136,7 @@ func (l *LocationHandler) GetAllLocation(ctx *fiber.Ctx) error {
 		Success: true,
 		Message: "Get All location Data Success",
 		Data:    locationsResponse,
+		Meta:    meta,
 		Error:   nil,
 	})
 }

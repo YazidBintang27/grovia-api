@@ -72,6 +72,8 @@ func (p *ParentHandler) CreateParent(ctx *fiber.Ctx) error {
 func (p *ParentHandler) GetAllParent(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	locationID := ctx.Locals("location_id").(int)
+	pageStr := ctx.Query("page")
+	limitStr := ctx.Query("limit")
 
 	name := ctx.Query("name")
 
@@ -87,7 +89,7 @@ func (p *ParentHandler) GetAllParent(ctx *fiber.Ctx) error {
 		})
 	}
 
-	parents, err := p.service.GetAllParent(locationID, name)
+	parents, meta, err := p.service.GetAllParent(locationID, name, pageStr, limitStr)
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
@@ -105,6 +107,7 @@ func (p *ParentHandler) GetAllParent(ctx *fiber.Ctx) error {
 		Success: true,
 		Message: "Get All Parent Data Success",
 		Data:    parents,
+		Meta:    meta,
 		Error:   nil,
 	})
 }
@@ -345,6 +348,8 @@ func (p *ParentHandler) GetAllPredictAllLocation(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 
 	name := ctx.Query("name")
+	pageStr := ctx.Query("page")
+	limitStr := ctx.Query("limit")
 
 	if !ok || userID == 0 {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(responses.BaseResponse{
@@ -358,7 +363,7 @@ func (p *ParentHandler) GetAllPredictAllLocation(ctx *fiber.Ctx) error {
 		})
 	}
 
-	parentResponses, err := p.service.GetAllParentAllLocation(name)
+	parentResponses, meta, err := p.service.GetAllParentAllLocation(name, pageStr, limitStr)
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
@@ -376,6 +381,7 @@ func (p *ParentHandler) GetAllPredictAllLocation(ctx *fiber.Ctx) error {
 		Success: true,
 		Message: "Get All Parent Data Without Location Success",
 		Data:    parentResponses,
+		Meta:    meta,
 		Error:   nil,
 	})
 }

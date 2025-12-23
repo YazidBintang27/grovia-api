@@ -8,12 +8,14 @@ import (
 	"grovia/internal/models"
 	"grovia/internal/repositories"
 	"log"
+	"math"
+	"strconv"
 	"strings"
 )
 
 type LocationService interface {
 	CreateLocation(req requests.LocationRequest) (*responses.LocationResponse, error)
-	GetAllLocation(name string) ([]responses.LocationResponse, error)
+	GetAllLocation(name, pageStr, limitStr string) ([]responses.LocationResponse, *responses.PaginationMeta, error)
 	GetLocationByID(id int) (*responses.LocationResponse, error)
 	UpdateLocationByID(id int, req requests.LocationRequest) (*responses.LocationResponse, error)
 	DeleteLocationByID(id int) error
@@ -75,11 +77,26 @@ func (l *locationService) DeleteLocationByID(id int) error {
 }
 
 // GetAllLocation implements LocationService.
-func (l *locationService) GetAllLocation(name string) ([]responses.LocationResponse, error) {
-	locations, err := l.repo.GetAllLocation(name)
+func (l *locationService) GetAllLocation(name, pageStr, limitStr string) ([]responses.LocationResponse, *responses.PaginationMeta, error) {
+	page, _ := strconv.Atoi(pageStr)
+	limit, _ := strconv.Atoi(limitStr)
+
+	if page < 1 {
+		page = 1
+	}
+
+	if limit < 1 {
+		limit = 1
+	}
+
+	offset := (page - 1) * limit
+
+	locations, total, err := l.repo.GetAllLocation(name, limit, offset)
+
+	totalPage := int(math.Ceil(float64(total) / float64(limit)))
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	var locationsResponse []responses.LocationResponse
@@ -95,7 +112,14 @@ func (l *locationService) GetAllLocation(name string) ([]responses.LocationRespo
 		})
 	}
 
-	return locationsResponse, nil
+	meta := responses.PaginationMeta{
+		Page:      page,
+		Limit:     limit,
+		TotalData: total,
+		TotalPage: totalPage,
+	}
+
+	return locationsResponse, &meta, nil
 }
 
 // GetLocationByID implements LocationService.

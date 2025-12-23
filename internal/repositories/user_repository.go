@@ -14,7 +14,7 @@ type UserRepository interface {
 	UpdateUser(id int, user *models.User) (*models.User, error)
 	DeleteUser(id int) error
 	FindRoleById(id int) (string, error)
-	FindUsersByRole(roles []string, name string, locationID int) ([]models.User, error)
+	FindUsersByRole(roles []string, name string, locationID, limit, offset int) ([]models.User, int, error)
 }
 
 type userRepository struct {
@@ -22,8 +22,9 @@ type userRepository struct {
 }
 
 // FindUsersByRole implements UserRepository.
-func (u *userRepository) FindUsersByRole(roles []string, name string, locationID int) ([]models.User, error) {
+func (u *userRepository) FindUsersByRole(roles []string, name string, locationID, limit, offset int) ([]models.User, int, error) {
 	var users []models.User
+	var total int64
 	db := u.db.Model(&models.User{})
 
 	db = db.Where("role IN ?", roles)
@@ -37,15 +38,22 @@ func (u *userRepository) FindUsersByRole(roles []string, name string, locationID
 		db = db.Where("REPLACE(LOWER(name), ' ', '') LIKE ?", "%"+normalizedName+"%")
 	}
 
-	err := db.Find(&users).Error
-	return users, err
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if err := db.Limit(limit).Offset(offset).Order("created_at DESC").Find(&users).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return users, int(total), nil
 }
 
 // GetAllUser implements UserRepository.
 func (u *userRepository) GetAllUser() ([]models.User, error) {
 	var users []models.User
 
-	err := u.db.Find(&users).Error
+	err := u.db.Order("created_at DESC").Find(&users).Error
 
 	if err != nil {
 		return nil, err

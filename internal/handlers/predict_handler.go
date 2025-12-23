@@ -75,6 +75,8 @@ func (h *PredictHandler) CreateGroupPredict(ctx *fiber.Ctx) error {
 func (h *PredictHandler) GetAllPredict(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	locationID := ctx.Locals("location_id").(int)
+	pageStr := ctx.Query("page")
+	limitStr := ctx.Query("limit")
 
 	if !ok || userID == 0 {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(responses.BaseResponse{
@@ -87,7 +89,7 @@ func (h *PredictHandler) GetAllPredict(ctx *fiber.Ctx) error {
 		})
 	}
 
-	predicts, err := h.service.GetAllPredict(locationID)
+	predicts, meta, err := h.service.GetAllPredict(locationID, pageStr, limitStr)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
 			Success: false,
@@ -103,6 +105,7 @@ func (h *PredictHandler) GetAllPredict(ctx *fiber.Ctx) error {
 		Success: true,
 		Message: "Get all predict success",
 		Data:    predicts,
+		Meta:    meta,
 	})
 }
 
@@ -304,6 +307,8 @@ func (h *PredictHandler) DeletePredictByID(ctx *fiber.Ctx) error {
 
 func (h *PredictHandler) GetAllPredictAllLocation(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
+	pageStr := ctx.Query("page")
+	limitStr := ctx.Query("limit")
 
 	if !ok || userID == 0 {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(responses.BaseResponse{
@@ -317,7 +322,7 @@ func (h *PredictHandler) GetAllPredictAllLocation(ctx *fiber.Ctx) error {
 		})
 	}
 
-	predictResponses, err := h.service.GetAllPredictAllLocation()
+	predictResponses, meta, err := h.service.GetAllPredictAllLocation(pageStr, limitStr)
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
@@ -335,6 +340,7 @@ func (h *PredictHandler) GetAllPredictAllLocation(ctx *fiber.Ctx) error {
 		Success: true,
 		Message: "Get All Predict Data Without Location Success",
 		Data:    predictResponses,
+		Meta:    meta,
 		Error:   nil,
 	})
 }

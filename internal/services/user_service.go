@@ -8,14 +8,16 @@ import (
 	"grovia/internal/models"
 	"grovia/internal/repositories"
 	"grovia/pkg"
+	"math"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
 type UserService interface {
 	CreateUser(req requests.CreateUserRequest, createdBy string, locationID int) (*responses.UserResponse, error)
 	GetCurrentUser(id int) (*responses.UserResponse, error)
-	GetUsersByRole(requesterRole, name string, locationID int) ([]responses.UserResponse, error)
+	GetUsersByRole(requesterRole, name, pageStr, limitStr string, locationID int) ([]responses.UserResponse, *responses.PaginationMeta, error)
 	GetUserById(targetUserID int, accesorRole string) (*responses.UserResponse, error)
 	UpdateCurrentUser(id int, req requests.UpdateUserRequest) (*responses.UserResponse, error)
 	UpdateUserByID(targetUserID int, req requests.UpdateUserRequest, updaterRole string) (*responses.UserResponse, error)
@@ -68,8 +70,10 @@ func (u *userService) GetUserById(targetUserID int, accesorRole string) (*respon
 }
 
 // GetUsersByRole implements UserService.
-func (u *userService) GetUsersByRole(requesterRole, name string, locationID int) ([]responses.UserResponse, error) {
+func (u *userService) GetUsersByRole(requesterRole, name, pageStr, limitStr string, locationID int) ([]responses.UserResponse, *responses.PaginationMeta, error) {
 	var roles []string
+	page, _ := strconv.Atoi(pageStr)
+	limit, _ := strconv.Atoi(limitStr)
 
 	switch requesterRole {
 	case pkg.RoleAdmin:
@@ -77,13 +81,25 @@ func (u *userService) GetUsersByRole(requesterRole, name string, locationID int)
 	case pkg.RoleKepalaPosyandu:
 		roles = []string{pkg.RoleKader}
 	default:
-		return nil, errors.New("forbidden: role not allowed")
+		return nil, nil, errors.New("forbidden: role not allowed")
 	}
 
-	users, err := u.repo.FindUsersByRole(roles, name, locationID)
-	if err != nil {
-		return nil, err
+	if page < 1 {
+		page = 1
 	}
+
+	if limit < 1 {
+		limit = 1
+	}
+
+	offset := (page - 1) * limit
+
+	users, total, err := u.repo.FindUsersByRole(roles, name, locationID, limit, offset)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	totalPage := int(math.Ceil(float64(total) / float64(limit)))
 
 	var result []responses.UserResponse
 	for _, v := range users {
@@ -102,7 +118,14 @@ func (u *userService) GetUsersByRole(requesterRole, name string, locationID int)
 		})
 	}
 
-	return result, nil
+	meta := responses.PaginationMeta{
+		Page: page,
+		Limit: limit,
+		TotalData: total,
+		TotalPage: totalPage,
+	}
+
+	return result, &meta, nil
 }
 
 // DeleteUserByID implements UserService.

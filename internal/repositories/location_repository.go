@@ -9,7 +9,7 @@ import (
 
 type LocationRepository interface {
 	CreateLocation(location *models.Location) (*models.Location, error)
-	GetAllLocation(name string) ([]models.Location, error)
+	GetAllLocation(name string, limit, offset int) ([]models.Location, int, error)
 	GetLocationByID(id int) (*models.Location, error)
 	UpdateLocationByID(id int, location *models.Location) (*models.Location, error)
 	DeleteLocationByID(id int) error
@@ -40,8 +40,9 @@ func (l *locationRepository) DeleteLocationByID(id int) error {
 }
 
 // GetAllLocation implements LocationRepository.
-func (l *locationRepository) GetAllLocation(name string) ([]models.Location, error) {
+func (l *locationRepository) GetAllLocation(name string, limit, offset int) ([]models.Location, int, error) {
 	var locations []models.Location
+	var total int64
 
 	db := l.db.Model(&locations)
 
@@ -50,8 +51,15 @@ func (l *locationRepository) GetAllLocation(name string) ([]models.Location, err
 		db = db.Where("REPLACE(LOWER(name), ' ', '') LIKE ?", "%"+normalizedName+"%")
 	}
 
-	err := db.Find(&locations).Error
-	return locations, err
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if err := db.Limit(limit).Offset(offset).Order("created_at DESC").Find(&locations).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return locations, int(total), nil
 }
 
 // GetLocationByID implements LocationRepository.

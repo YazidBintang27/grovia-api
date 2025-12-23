@@ -9,22 +9,24 @@ import (
 	"grovia/internal/models"
 	"grovia/internal/repositories"
 	"io"
+	"math"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 )
 
 type PredictService interface {
 	CreateIndividualPredict(req requests.CreateToddlerRequest, locationID, toddlerID int) (*responses.PredictResponse, error)
 	CreateGroupPredict(filePath string) ([]byte, error)
-	GetAllPredict(locationID int) ([]responses.PredictResponse, error)
+	GetAllPredict(locationID int, pageStr, limitStr string) ([]responses.PredictResponse, *responses.PaginationMeta, error)
 	GetAllPredictByToddlerID(locationID, toddlerID int) ([]responses.PredictResponse, error)
 	GetPredictByID(id int) (*responses.PredictResponse, error)
 	UpdatePredictByID(id int, req *requests.UpdatePredictRequest) (*responses.PredictResponse, error)
 	DeletePredictByID(id, locationID int) error
-	GetAllPredictAllLocation() ([]responses.PredictResponse, error)
+	GetAllPredictAllLocation(pageStr, limitStr string) ([]responses.PredictResponse, *responses.PaginationMeta, error)
 }
 
 type predictService struct {
@@ -33,11 +35,30 @@ type predictService struct {
 }
 
 // GetAllPredictAllLocation implements PredictService.
-func (p *predictService) GetAllPredictAllLocation() ([]responses.PredictResponse, error) {
-	predicts, err := p.repo.GetAllPredictAllLocation()
+func (p *predictService) GetAllPredictAllLocation(pageStr, limitStr string) ([]responses.PredictResponse, *responses.PaginationMeta, error) {
+	page, _ := strconv.Atoi(pageStr)
+	limit, _ := strconv.Atoi(limitStr)
+
+	if page < 1 {
+		page = 1
+	}
+
+	if limit < 1 {
+		limit = 1
+	}
+
+	offset := (page - 1) * limit
+
+	predicts, total, err := p.repo.GetAllPredictAllLocation(limit, offset)
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
+	}
+
+	totalPage := int(math.Ceil(float64(total) / float64(limit)))
+
+	if err != nil {
+		return nil, nil, err
 	}
 
 	var predictResponses []responses.PredictResponse
@@ -56,7 +77,14 @@ func (p *predictService) GetAllPredictAllLocation() ([]responses.PredictResponse
 		})
 	}
 
-	return predictResponses, nil
+	meta := responses.PaginationMeta{
+		Page:      page,
+		Limit:     limit,
+		TotalData: total,
+		TotalPage: totalPage,
+	}
+
+	return predictResponses, &meta, nil
 }
 
 // CreateGroupPredict implements PredictService.
@@ -169,11 +197,27 @@ func (p *predictService) DeletePredictByID(id int, locationID int) error {
 }
 
 // GetAllPredict implements PredictService.
-func (p *predictService) GetAllPredict(locationID int) ([]responses.PredictResponse, error) {
-	predicts, err := p.repo.GetAllPredict(locationID)
-	if err != nil {
-		return nil, err
+func (p *predictService) GetAllPredict(locationID int, pageStr, limitStr string) ([]responses.PredictResponse, *responses.PaginationMeta, error) {
+	page, _ := strconv.Atoi(pageStr)
+	limit, _ := strconv.Atoi(limitStr)
+
+	if page < 1 {
+		page = 1
 	}
+
+	if limit < 1 {
+		limit = 1
+	}
+
+	offset := (page - 1) * limit
+
+	predicts, total, err := p.repo.GetAllPredict(locationID, limit, offset)
+
+	if err != nil {
+		return nil, nil, err
+	}
+
+	totalPage := int(math.Ceil(float64(total) / float64(limit)))
 
 	var responsesList []responses.PredictResponse
 	for _, pred := range predicts {
@@ -191,7 +235,14 @@ func (p *predictService) GetAllPredict(locationID int) ([]responses.PredictRespo
 		})
 	}
 
-	return responsesList, nil
+	meta := responses.PaginationMeta{
+		Page:      page,
+		Limit:     limit,
+		TotalData: total,
+		TotalPage: totalPage,
+	}
+
+	return responsesList, &meta, nil
 }
 
 // GetAllPredictByToddlerID implements PredictService.

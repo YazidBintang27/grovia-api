@@ -7,18 +7,20 @@ import (
 	"grovia/internal/dto/responses"
 	"grovia/internal/models"
 	"grovia/internal/repositories"
+	"math"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
 type ParentService interface {
 	CreateParent(req requests.CreateParentRequest) (*responses.ParentResponse, error)
-	GetAllParent(locationID int, name string) ([]responses.ParentResponse, error)
+	GetAllParent(locationID int, name, pageStr, limitStr string) ([]responses.ParentResponse, *responses.PaginationMeta, error)
 	GetParentByID(id, locationID int) (*responses.ParentResponse, error)
 	UpdateParentByID(id, locationID int, req requests.UpdateParentRequest) (*responses.ParentResponse, error)
 	DeleteParentByID(id, locationID int) error
 	CheckPhoneExists(phoneNumber string) (*models.Parent, error)
-	GetAllParentAllLocation(name string) ([]responses.ParentResponse, error)
+	GetAllParentAllLocation(name, pageStr, limitStr string) ([]responses.ParentResponse, *responses.PaginationMeta, error)
 }
 
 type parentService struct {
@@ -74,12 +76,27 @@ func (p *parentService) CreateParent(req requests.CreateParentRequest) (*respons
 }
 
 // GetAllParentAllLocation implements ParentService.
-func (p *parentService) GetAllParentAllLocation(name string) ([]responses.ParentResponse, error) {
-	parents, err := p.repo.GetAllParentAllLocation(name)
+func (p *parentService) GetAllParentAllLocation(name, pageStr, limitStr string) ([]responses.ParentResponse, *responses.PaginationMeta, error) {
+	page, _ := strconv.Atoi(pageStr)
+	limit, _ := strconv.Atoi(limitStr)
+
+	if page < 1 {
+		page = 1
+	}
+
+	if limit < 1 {
+		limit = 1
+	}
+
+	offset := (page - 1) * limit
+
+	parents, total, err := p.repo.GetAllParentAllLocation(name, limit, offset)
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+
+	totalPage := int(math.Ceil(float64(total) / float64(limit)))
 
 	var parentResponses []responses.ParentResponse
 	for _, v := range parents {
@@ -96,7 +113,14 @@ func (p *parentService) GetAllParentAllLocation(name string) ([]responses.Parent
 		})
 	}
 
-	return parentResponses, nil
+	meta := responses.PaginationMeta{
+		Page:      page,
+		Limit:     limit,
+		TotalData: total,
+		TotalPage: totalPage,
+	}
+
+	return parentResponses, &meta, nil
 }
 
 // CheckPhoneExists implements ParentService.
@@ -110,12 +134,27 @@ func (p *parentService) DeleteParentByID(id int, locationID int) error {
 }
 
 // GetAllParent implements ParentService.
-func (p *parentService) GetAllParent(locationID int, name string) ([]responses.ParentResponse, error) {
-	parents, err := p.repo.GetAllParent(locationID, name)
+func (p *parentService) GetAllParent(locationID int, name, pageStr, limitStr string) ([]responses.ParentResponse, *responses.PaginationMeta, error) {
+	page, _ := strconv.Atoi(pageStr)
+	limit, _ := strconv.Atoi(limitStr)
+
+	if page < 1 {
+		page = 1
+	}
+
+	if limit < 1 {
+		limit = 1
+	}
+
+	offset := (page - 1) * limit
+
+	parents, total, err := p.repo.GetAllParent(locationID, limit, offset, name)
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+
+	totalPage := int(math.Ceil(float64(total) / float64(limit)))
 
 	var parentResponse []responses.ParentResponse
 
@@ -133,7 +172,14 @@ func (p *parentService) GetAllParent(locationID int, name string) ([]responses.P
 		})
 	}
 
-	return parentResponse, nil
+	meta := responses.PaginationMeta{
+		Page:      page,
+		Limit:     limit,
+		TotalData: total,
+		TotalPage: totalPage,
+	}
+
+	return parentResponse, &meta, nil
 }
 
 // GetParentByID implements ParentService.

@@ -10,12 +10,12 @@ import (
 
 type ParentRepository interface {
 	CreateParent(parent *models.Parent) (*models.Parent, error)
-	GetAllParent(locationID int, name string) ([]models.Parent, error)
+	GetAllParent(locationID, limit, offset int, name string) ([]models.Parent, int, error)
 	GetParentByID(id, locationID int) (*models.Parent, error)
 	UpdateParentByID(id, locationID int, parent *models.Parent) (*models.Parent, error)
 	DeleteParentByID(id, locationID int) error
 	FindParentByPhoneNumber(phoneNumber string) (*models.Parent, error)
-	GetAllParentAllLocation(name string) ([]models.Parent, error)
+	GetAllParentAllLocation(name string, limit, offset int) ([]models.Parent, int, error)
 }
 
 type parentRepository struct {
@@ -23,8 +23,9 @@ type parentRepository struct {
 }
 
 // GetAllParentAllLocation implements ParentRepository.
-func (p *parentRepository) GetAllParentAllLocation(name string) ([]models.Parent, error) {
+func (p *parentRepository) GetAllParentAllLocation(name string, limit, offset int) ([]models.Parent, int, error) {
 	var parents []models.Parent
+	var total int64
 
 	db := p.db.Model(&parents)
 
@@ -33,8 +34,14 @@ func (p *parentRepository) GetAllParentAllLocation(name string) ([]models.Parent
 		db = db.Where("REPLACE(LOWER(name), ' ', '') LIKE ?", "%"+normalizedName+"%")
 	}
 
-	err := db.Find(&parents).Error
-	return parents, err
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if err := db.Limit(limit).Offset(offset).Order("created_at DESC").Find(&parents).Error; err != nil {
+		return nil, 0, err
+	}
+	return parents, int(total), nil
 }
 
 // CreateParent implements ParentRepository.
@@ -81,8 +88,9 @@ func (p *parentRepository) DeleteParentByID(id, locationID int) error {
 }
 
 // GetAllParent implements ParentRepository.
-func (p *parentRepository) GetAllParent(locationID int, name string) ([]models.Parent, error) {
+func (p *parentRepository) GetAllParent(locationID, limit, offset int, name string) ([]models.Parent, int, error) {
 	var parents []models.Parent
+	var total int64
 
 	db := p.db.Model(&parents)
 
@@ -93,8 +101,15 @@ func (p *parentRepository) GetAllParent(locationID int, name string) ([]models.P
 		db = db.Where("REPLACE(LOWER(name), ' ', '') LIKE ?", "%"+normalizedName+"%")
 	}
 
-	err := db.Find(&parents).Error
-	return parents, err
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if err := db.Limit(limit).Offset(offset).Order("created_at DESC").Find(&parents).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return parents, int(total), nil
 }
 
 // GetParentByID implements ParentRepository.

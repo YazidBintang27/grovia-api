@@ -169,6 +169,8 @@ func (u *UserHandler) GetUsersByRole(ctx *fiber.Ctx) error {
 	locationID := ctx.Locals("location_id").(int)
 	role := ctx.Locals("role")
 	name := ctx.Query("name")
+	pageStr := ctx.Query("page")
+	limitStr := ctx.Query("limit")
 
 	if !ok || userID == 0 {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(responses.BaseResponse{
@@ -182,7 +184,7 @@ func (u *UserHandler) GetUsersByRole(ctx *fiber.Ctx) error {
 		})
 	}
 
-	user, err := u.service.GetUsersByRole(role.(string), name, locationID)
+	user, meta, err := u.service.GetUsersByRole(role.(string), name, pageStr, limitStr, locationID)
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
@@ -200,6 +202,7 @@ func (u *UserHandler) GetUsersByRole(ctx *fiber.Ctx) error {
 		Success: true,
 		Message: "Get User Success",
 		Data:    user,
+		Meta:    meta,
 		Error:   nil,
 	})
 }

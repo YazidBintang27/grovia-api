@@ -6,18 +6,20 @@ import (
 	"grovia/internal/dto/responses"
 	"grovia/internal/models"
 	"grovia/internal/repositories"
+	"math"
+	"strconv"
 	"strings"
 )
 
 type ToddlerService interface {
 	CreateToddler(req requests.CreateToddlerRequest) (*responses.ToddlerResponse, *responses.PredictResponse, error)
 	CreateToddlerWithParent(toddlerReq requests.CreateToddlerRequest, parentReq requests.CreateParentRequest) (*responses.ToddlerResponse, *responses.ParentResponse, *responses.PredictResponse, error)
-	GetAllToddler(locationID int, name string) ([]responses.ToddlerResponse, error)
+	GetAllToddler(locationID int, name, pageStr, limitStr string) ([]responses.ToddlerResponse, *responses.PaginationMeta, error)
 	GetToddlerByID(id, locationID int) (*responses.ToddlerResponse, error)
 	UpdateToddlerByID(id, locationID int, req requests.UpdateToddlerRequest) (*responses.ToddlerResponse, *responses.PredictResponse, error)
 	DeleteToddlerByID(id, locationID int) error
 	CheckToddlerExists(phoneNumber, name string) (bool, *models.Toddler, error)
-	GetAllToddlerAllLocation(name string) ([]responses.ToddlerResponse, error)
+	GetAllToddlerAllLocation(name, pageStr, limitStr string) ([]responses.ToddlerResponse, *responses.PaginationMeta, error)
 	UpdateToddlerByIDWithoutPredict(id, locationID int, req requests.UpdateToddlerRequest) (*responses.ToddlerResponse, error)
 }
 
@@ -100,12 +102,27 @@ func (t *toddlerService) UpdateToddlerByIDWithoutPredict(id int, locationID int,
 }
 
 // GetAllToddlerAllLocation implements ToddlerService.
-func (t *toddlerService) GetAllToddlerAllLocation(name string) ([]responses.ToddlerResponse, error) {
-	toddlers, err := t.repo.GetAllToddlerAllLocation(name)
+func (t *toddlerService) GetAllToddlerAllLocation(name, pageStr, limitStr string) ([]responses.ToddlerResponse, *responses.PaginationMeta, error) {
+	page, _ := strconv.Atoi(pageStr)
+	limit, _ := strconv.Atoi(limitStr)
+
+	if page < 1 {
+		page = 1
+	}
+
+	if limit < 1 {
+		limit = 1
+	}
+
+	offset := (page - 1) * limit
+
+	toddlers, total, err := t.repo.GetAllToddlerAllLocation(name, limit, offset)
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+
+	totalPage := int(math.Ceil(float64(total) / float64(limit)))
 
 	var toddlerResponses []responses.ToddlerResponse
 	for _, v := range toddlers {
@@ -124,7 +141,14 @@ func (t *toddlerService) GetAllToddlerAllLocation(name string) ([]responses.Todd
 		})
 	}
 
-	return toddlerResponses, nil
+	meta := responses.PaginationMeta{
+		Page:      page,
+		Limit:     limit,
+		TotalData: total,
+		TotalPage: totalPage,
+	}
+
+	return toddlerResponses, &meta, nil
 }
 
 // CheckToddlerExists implements ToddlerService.
@@ -340,12 +364,27 @@ func (t *toddlerService) DeleteToddlerByID(id int, locationID int) error {
 }
 
 // GetAllToddler implements ToddlerService.
-func (t *toddlerService) GetAllToddler(locationID int, name string) ([]responses.ToddlerResponse, error) {
-	toddlers, err := t.repo.GetAllToddler(locationID, name)
+func (t *toddlerService) GetAllToddler(locationID int, name, pageStr, limitStr string) ([]responses.ToddlerResponse, *responses.PaginationMeta, error) {
+	page, _ := strconv.Atoi(pageStr)
+	limit, _ := strconv.Atoi(limitStr)
+
+	if page < 1 {
+		page = 1
+	}
+
+	if limit < 1 {
+		limit = 1
+	}
+
+	offset := (page - 1) * limit
+
+	toddlers, total, err := t.repo.GetAllToddler(locationID, limit, offset, name)
 
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+
+	totalPage := int(math.Ceil(float64(total) / float64(limit)))
 
 	var toddlerResponse []responses.ToddlerResponse
 
@@ -365,7 +404,14 @@ func (t *toddlerService) GetAllToddler(locationID int, name string) ([]responses
 		})
 	}
 
-	return toddlerResponse, err
+	meta := responses.PaginationMeta{
+		Page:      page,
+		Limit:     limit,
+		TotalData: total,
+		TotalPage: totalPage,
+	}
+
+	return toddlerResponse, &meta, err
 }
 
 // GetToddlerByID implements ToddlerService.

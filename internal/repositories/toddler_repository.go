@@ -10,13 +10,13 @@ import (
 
 type ToddlerRepository interface {
 	CreateToddler(toddler *models.Toddler) (*models.Toddler, error)
-	GetAllToddler(locationID int, name string) ([]models.Toddler, error)
+	GetAllToddler(locationID, limit, offset int, name string) ([]models.Toddler, int, error)
 	GetToddlerByID(id, locationID int) (*models.Toddler, error)
 	UpdateToddlerByID(id, locationID int, toddler *models.Toddler) (*models.Toddler, error)
 	DeleteToddlerByID(id, locationID int) error
 	FindParentIDByID(id, locationID int) (*int, error)
 	FindToddlerByName(parentID int, name string) (bool, *models.Toddler, error)
-	GetAllToddlerAllLocation(name string) ([]models.Toddler, error)
+	GetAllToddlerAllLocation(name string, limit, offset int) ([]models.Toddler, int, error)
 }
 
 type toddlerRepository struct {
@@ -24,8 +24,9 @@ type toddlerRepository struct {
 }
 
 // GetAllToddlerAllLocation implements ToddlerRepository.
-func (t *toddlerRepository) GetAllToddlerAllLocation(name string) ([]models.Toddler, error) {
+func (t *toddlerRepository) GetAllToddlerAllLocation(name string, limit, offset int) ([]models.Toddler, int, error) {
 	var toddlers []models.Toddler
+	var total int64
 	db := t.db.Model(&toddlers)
 
 	if strings.TrimSpace(name) != "" {
@@ -33,8 +34,15 @@ func (t *toddlerRepository) GetAllToddlerAllLocation(name string) ([]models.Todd
 		db = db.Where("REPLACE(LOWER(name), ' ', '') LIKE ?", "%"+normalizedName+"%")
 	}
 
-	err := db.Find(&toddlers).Error
-	return toddlers, err
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if err := db.Limit(limit).Offset(offset).Order("created_at DESC").Find(&toddlers).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return toddlers, int(total), nil
 }
 
 // FindToddlerByName implements ToddlerRepository.
@@ -113,8 +121,9 @@ func (t *toddlerRepository) DeleteToddlerByID(id int, locationID int) error {
 }
 
 // GetAllToddler implements ToddlerRepository.
-func (t *toddlerRepository) GetAllToddler(locationID int, name string) ([]models.Toddler, error) {
+func (t *toddlerRepository) GetAllToddler(locationID, limit, offset int, name string) ([]models.Toddler, int, error) {
 	var toddlers []models.Toddler
+	var total int64
 	db := t.db.Model(&toddlers)
 
 	db = db.Where("location_id = ?", locationID)
@@ -124,8 +133,15 @@ func (t *toddlerRepository) GetAllToddler(locationID int, name string) ([]models
 		db = db.Where("REPLACE(LOWER(name), ' ', '') LIKE ?", "%"+normalizedName+"%")
 	}
 
-	err := db.Find(&toddlers).Error
-	return toddlers, err
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	if err := db.Limit(limit).Offset(offset).Order("created_at DESC").Find(&toddlers).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return toddlers, int(total), nil
 }
 
 // GetToddlerByID implements ToddlerRepository.

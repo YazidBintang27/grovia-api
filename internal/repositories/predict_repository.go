@@ -8,13 +8,13 @@ import (
 
 type PredictRepository interface {
 	CreateIndividualPredict(predict *models.Predict, locationID, toddlerID int) (*models.Predict, error)
-	GetAllPredict(locationID int) ([]models.Predict, error)
+	GetAllPredict(locationID, limit, offset int) ([]models.Predict, int, error)
 	GetAllPredictByToddlerID(locationID, toddlerID int) ([]models.Predict, error)
 	GetPredictByID(id int) (*models.Predict, error)
 	UpdatePredictByID(id int, predict *models.Predict) (*models.Predict, error)
 	DeletePredictByID(id, locationID int) error
 	FindToddlerIDByID(id, locationID int) (*int, error)
-	GetAllPredictAllLocation() ([]models.Predict, error)
+	GetAllPredictAllLocation(limit, offset int) ([]models.Predict, int, error)
 }
 
 type predictRepository struct {
@@ -22,19 +22,26 @@ type predictRepository struct {
 }
 
 // GetAllPredictAllLocation implements PredictRepository.
-func (p *predictRepository) GetAllPredictAllLocation() ([]models.Predict, error) {
+func (p *predictRepository) GetAllPredictAllLocation(limit, offset int) ([]models.Predict, int, error) {
 	var predicts []models.Predict
+	var total int64
 
-	tx := p.db.Order("created_at DESC").Find(&predicts)
+	db := p.db.Model(&predicts)
+
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	tx := db.Limit(limit).Offset(offset).Order("created_at DESC").Find(&predicts);
 
 	if tx.Error != nil {
-		return nil, tx.Error
+		return nil, 0, tx.Error
 	}
 	if tx.RowsAffected == 0 {
-		return nil, gorm.ErrRecordNotFound
+		return nil, 0, gorm.ErrRecordNotFound
 	}
 
-	return predicts, nil
+	return predicts, int(total), nil
 }
 
 // FindToddlerIDByID implements PredictRepository.
@@ -95,19 +102,21 @@ func (p *predictRepository) DeletePredictByID(id int, locationID int) error {
 }
 
 // GetAllPredict implements PredictRepository.
-func (p *predictRepository) GetAllPredict(locationID int) ([]models.Predict, error) {
+func (p *predictRepository) GetAllPredict(locationID, limit, offset int) ([]models.Predict, int, error) {
 	var predicts []models.Predict
+	var total int64
+	db := p.db.Model(&predicts)
 
-	tx := p.db.Where("location_id = ?", locationID).Order("created_at DESC").Find(&predicts)
+	tx := db.Where("location_id = ?", locationID).Limit(limit).Offset(offset).Order("created_at DESC").Find(&predicts)
 
 	if tx.Error != nil {
-		return nil, tx.Error
+		return nil, 0, tx.Error
 	}
 	if tx.RowsAffected == 0 {
-		return nil, gorm.ErrRecordNotFound
+		return nil, 0, gorm.ErrRecordNotFound
 	}
 
-	return predicts, nil
+	return predicts, int(total), nil
 }
 
 // GetAllPredictByToddlerID implements PredictRepository.
