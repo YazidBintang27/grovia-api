@@ -12,7 +12,7 @@ type PredictRepository interface {
 	GetAllPredictByToddlerID(locationID, toddlerID int) ([]models.Predict, error)
 	GetPredictByID(id int) (*models.Predict, error)
 	UpdatePredictByID(id int, predict *models.Predict) (*models.Predict, error)
-	DeletePredictByID(id, locationID int) error
+	DeletePredictByID(id, locationID, userID int) error
 	FindToddlerIDByID(id, locationID int) (*int, error)
 	GetAllPredictAllLocation(limit, offset int) ([]models.Predict, int, error)
 }
@@ -26,13 +26,13 @@ func (p *predictRepository) GetAllPredictAllLocation(limit, offset int) ([]model
 	var predicts []models.Predict
 	var total int64
 
-	db := p.db.Model(&predicts)
+	db := p.db.Model(&predicts).Where("deleted_at IS NULL")
 
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	tx := db.Limit(limit).Offset(offset).Order("created_at DESC").Find(&predicts);
+	tx := db.Limit(limit).Offset(offset).Order("created_at DESC").Find(&predicts)
 
 	if tx.Error != nil {
 		return nil, 0, tx.Error
@@ -73,27 +73,35 @@ func (p *predictRepository) CreateIndividualPredict(predict *models.Predict, loc
 }
 
 // DeletePredictByID implements PredictRepository.
-func (p *predictRepository) DeletePredictByID(id int, locationID int) error {
+func (p *predictRepository) DeletePredictByID(id int, locationID, userID int) error {
 	toddlerID, err := p.FindToddlerIDByID(id, locationID)
 
 	if err != nil {
 		return err
 	}
 
+	db := p.db.Model(&models.Predict{})
+
 	if locationID == 1 {
-		tx := p.db.Where("id = ? AND toddler_id = ?", id, toddlerID).Delete(&models.Predict{})
-		if tx.Error != nil {
-			return tx.Error
+		res := db.Where("id = ? AND toddler_id = ?", id, toddlerID).Updates(map[string]any{
+			"deleted_by_id": userID,
+			"deleted_at":    gorm.Expr("NOW()"),
+		})
+		if res.Error != nil {
+			return res.Error
 		}
-		if tx.RowsAffected == 0 {
+		if res.RowsAffected == 0 {
 			return gorm.ErrRecordNotFound
 		}
 	} else {
-		tx := p.db.Where("id = ? AND toddler_id = ? AND location_id = ?", id, toddlerID, locationID).Delete(&models.Predict{})
-		if tx.Error != nil {
-			return tx.Error
+		res := db.Where("id = ? AND toddler_id = ? AND location_id = ?", id, toddlerID, locationID).Updates(map[string]any{
+			"deleted_by_id": userID,
+			"deleted_at":    gorm.Expr("NOW()"),
+		})
+		if res.Error != nil {
+			return res.Error
 		}
-		if tx.RowsAffected == 0 {
+		if res.RowsAffected == 0 {
 			return gorm.ErrRecordNotFound
 		}
 	}
@@ -105,7 +113,7 @@ func (p *predictRepository) DeletePredictByID(id int, locationID int) error {
 func (p *predictRepository) GetAllPredict(locationID, limit, offset int) ([]models.Predict, int, error) {
 	var predicts []models.Predict
 	var total int64
-	db := p.db.Model(&predicts)
+	db := p.db.Model(&predicts).Where("deleted_at IS NULL")
 
 	tx := db.Where("location_id = ?", locationID).Limit(limit).Offset(offset).Order("created_at DESC").Find(&predicts)
 
@@ -124,7 +132,7 @@ func (p *predictRepository) GetAllPredictByToddlerID(locationID, toddlerID int) 
 	var predicts []models.Predict
 
 	if locationID == 1 {
-		tx := p.db.Where("toddler_id = ?", toddlerID).Order("created_at DESC").Find(&predicts)
+		tx := p.db.Where("toddler_id = ? AND deleted_at IS NULL", toddlerID).Order("created_at DESC").Find(&predicts)
 
 		if tx.Error != nil {
 			return nil, tx.Error
@@ -133,7 +141,7 @@ func (p *predictRepository) GetAllPredictByToddlerID(locationID, toddlerID int) 
 			return nil, gorm.ErrRecordNotFound
 		}
 	} else {
-		tx := p.db.Where("location_id = ? AND toddler_id = ?", locationID, toddlerID).Order("created_at DESC").Find(&predicts)
+		tx := p.db.Where("location_id = ? AND toddler_id = ? AND deleted_at IS NULL", locationID, toddlerID).Order("created_at DESC").Find(&predicts)
 
 		if tx.Error != nil {
 			return nil, tx.Error

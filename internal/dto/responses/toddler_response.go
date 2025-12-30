@@ -6,6 +6,8 @@ type ToddlerResponse struct {
 	ID                int       `json:"id"`
 	ParentID          int       `json:"parentID"`
 	LocationID        int       `json:"locationID"`
+	CreatedByID       int       `json:"createdByID"`
+	UpdatedByID       int       `json:"updatedByID"`
 	Name              string    `json:"name"`
 	Birthdate         time.Time `json:"birthdate"`
 	Sex               string    `json:"sex"`

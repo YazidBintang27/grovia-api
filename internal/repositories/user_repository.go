@@ -27,7 +27,7 @@ func (u *userRepository) FindUsersByRole(roles []string, name string, locationID
 	var total int64
 	db := u.db.Model(&models.User{})
 
-	db = db.Where("role IN ?", roles)
+	db = db.Where("is_active = true AND role IN ?", roles)
 
 	if locationID != 1 {
 		db = db.Where("location_id = ?", locationID)
@@ -53,7 +53,7 @@ func (u *userRepository) FindUsersByRole(roles []string, name string, locationID
 func (u *userRepository) GetAllUser() ([]models.User, error) {
 	var users []models.User
 
-	err := u.db.Order("created_at DESC").Find(&users).Error
+	err := u.db.Where("is_active = true").Order("created_at DESC").Find(&users).Error
 
 	if err != nil {
 		return nil, err
@@ -85,7 +85,7 @@ func (u *userRepository) CreateUser(user *models.User) (*models.User, error) {
 
 // DeleteUser implements UserRepository.
 func (u *userRepository) DeleteUser(id int) error {
-	tx := u.db.Delete(&models.User{}, id)
+	tx := u.db.Model(&models.User{}).Where("id = ? AND is_active = true", id).Update("is_active", false)
 	if tx.Error != nil {
 		return tx.Error
 	}

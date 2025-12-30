@@ -6,7 +6,8 @@ import (
 	"grovia/internal/repositories"
 	"grovia/internal/routes"
 	"grovia/internal/services"
-	"grovia/migrations"
+
+	// "grovia/migrations"
 	"grovia/migrations/seeds"
 	"log"
 
@@ -22,7 +23,8 @@ func main() {
 	configs.DBInitiator()
 	db := configs.DBConnections
 
-	migrations.Initiator(db)
+	// migrations.Initiator(db)
+	// seeds.SeedDefaultLocation(db)
 	seeds.SeedAdmin(db)
 	RunAllSeeds(db)
 

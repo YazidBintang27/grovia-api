@@ -12,7 +12,7 @@ type LocationRepository interface {
 	GetAllLocation(name string, limit, offset int) ([]models.Location, int, error)
 	GetLocationByID(id int) (*models.Location, error)
 	UpdateLocationByID(id int, location *models.Location) (*models.Location, error)
-	DeleteLocationByID(id int) error
+	DeleteLocationByID(id, userID int) error
 }
 
 type locationRepository struct {
@@ -28,14 +28,22 @@ func (l *locationRepository) CreateLocation(location *models.Location) (*models.
 }
 
 // DeleteLocationByID implements LocationRepository.
-func (l *locationRepository) DeleteLocationByID(id int) error {
-	tx := l.db.Where("id = ?", id).Delete(&models.Location{})
-	if tx.Error != nil {
-		return tx.Error
+func (l *locationRepository) DeleteLocationByID(id, userID int) error {
+	res := l.db.Model(&models.Location{}).
+		Where("id = ?", id).
+		Updates(map[string]any{
+		"deleted_by_id": userID,
+		"deleted_at":    gorm.Expr("NOW()"),
+	})
+
+	if res.Error != nil {
+		return res.Error
 	}
-	if tx.RowsAffected == 0 {
+
+	if res.RowsAffected == 0 {
 		return gorm.ErrRecordNotFound
 	}
+
 	return nil
 }
 
@@ -84,9 +92,9 @@ func (l *locationRepository) UpdateLocationByID(id int, location *models.Locatio
 	}
 
 	var locationResponse models.Location
-	
+
 	tx := l.db.Where("id = ?", id).Find(&locationResponse)
-	
+
 	if tx.Error != nil {
 		return nil, tx.Error
 	}

@@ -13,7 +13,7 @@ type ToddlerRepository interface {
 	GetAllToddler(locationID, limit, offset int, name string) ([]models.Toddler, int, error)
 	GetToddlerByID(id, locationID int) (*models.Toddler, error)
 	UpdateToddlerByID(id, locationID int, toddler *models.Toddler) (*models.Toddler, error)
-	DeleteToddlerByID(id, locationID int) error
+	DeleteToddlerByID(id, locationID, userID int) error
 	FindParentIDByID(id, locationID int) (*int, error)
 	FindToddlerByName(parentID int, name string) (bool, *models.Toddler, error)
 	GetAllToddlerAllLocation(name string, limit, offset int) ([]models.Toddler, int, error)
@@ -24,21 +24,39 @@ type toddlerRepository struct {
 }
 
 // GetAllToddlerAllLocation implements ToddlerRepository.
-func (t *toddlerRepository) GetAllToddlerAllLocation(name string, limit, offset int) ([]models.Toddler, int, error) {
+func (t *toddlerRepository) GetAllToddlerAllLocation(
+	name string,
+	limit, offset int,
+) ([]models.Toddler, int, error) {
+
 	var toddlers []models.Toddler
 	var total int64
-	db := t.db.Model(&toddlers)
+
+	db := t.db.
+		Model(&models.Toddler{}).
+		Joins("LEFT JOIN parents ON parents.id = toddlers.parent_id").
+		Where("toddlers.deleted_at IS NULL")
 
 	if strings.TrimSpace(name) != "" {
 		normalizedName := strings.ToLower(strings.ReplaceAll(name, " ", ""))
-		db = db.Where("REPLACE(LOWER(name), ' ', '') LIKE ?", "%"+normalizedName+"%")
+
+		db = db.Where(`
+			REPLACE(LOWER(toddlers.name), ' ', '') LIKE ?
+			OR
+			REPLACE(LOWER(parents.name), ' ', '') LIKE ?
+		`, "%"+normalizedName+"%", "%"+normalizedName+"%")
 	}
 
 	if err := db.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	if err := db.Limit(limit).Offset(offset).Order("created_at DESC").Find(&toddlers).Error; err != nil {
+	if err := db.
+		Preload("Parent").
+		Limit(limit).
+		Offset(offset).
+		Order("toddlers.created_at DESC").
+		Find(&toddlers).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -93,28 +111,45 @@ func (t *toddlerRepository) FindParentIDByID(id int, locationID int) (*int, erro
 }
 
 // DeleteToddlerByID implements ToddlerRepository.
-func (t *toddlerRepository) DeleteToddlerByID(id int, locationID int) error {
+func (t *toddlerRepository) DeleteToddlerByID(id int, locationID, userID int) error {
 	parentID, err := t.FindParentIDByID(id, locationID)
 	if err != nil {
 		return err
 	}
 
+	db := t.db.Model(&models.Toddler{})
+
 	if locationID == 1 {
-		tx := t.db.Where("id = ? AND parent_id = ?", id, parentID).Delete(&models.Toddler{})
-		if tx.Error != nil {
-			return tx.Error
+		res := db.Where("id = ? AND parent_id = ?", id, parentID).Updates(map[string]any{
+			"deleted_by_id": userID,
+			"deleted_at":    gorm.Expr("NOW()"),
+		})
+		if res.Error != nil {
+			return res.Error
 		}
-		if tx.RowsAffected == 0 {
+		if res.RowsAffected == 0 {
 			return gorm.ErrRecordNotFound
 		}
 	} else {
-		tx := t.db.Where("id = ? AND location_id = ? AND parent_id = ?", id, locationID, parentID).Delete(&models.Toddler{})
-		if tx.Error != nil {
-			return tx.Error
+		res := db.Where("id = ? AND location_id = ? AND parent_id = ?", id, locationID, parentID).Updates(map[string]any{
+			"deleted_by_id": userID,
+			"deleted_at":    gorm.Expr("NOW()"),
+		})
+		if res.Error != nil {
+			return res.Error
 		}
-		if tx.RowsAffected == 0 {
+		if res.RowsAffected == 0 {
 			return gorm.ErrRecordNotFound
 		}
+	}
+
+	if err := t.db.Model(&models.Predict{}).
+		Where("toddler_id = ? AND deleted_at IS NULL", id).
+		Updates(map[string]any{
+			"deleted_by_id": userID,
+			"deleted_at":    gorm.Expr("NOW()"),
+		}).Error; err != nil {
+		return err
 	}
 
 	return nil
@@ -124,9 +159,7 @@ func (t *toddlerRepository) DeleteToddlerByID(id int, locationID int) error {
 func (t *toddlerRepository) GetAllToddler(locationID, limit, offset int, name string) ([]models.Toddler, int, error) {
 	var toddlers []models.Toddler
 	var total int64
-	db := t.db.Model(&toddlers)
-
-	db = db.Where("location_id = ?", locationID)
+	db := t.db.Model(&toddlers).Where("location_id = ? AND deleted_at IS NULL", locationID)
 
 	if strings.TrimSpace(name) != "" {
 		normalizedName := strings.ToLower(strings.ReplaceAll(name, " ", ""))

@@ -12,15 +12,15 @@ import (
 )
 
 type ToddlerService interface {
-	CreateToddler(req requests.CreateToddlerRequest) (*responses.ToddlerResponse, *responses.PredictResponse, error)
-	CreateToddlerWithParent(toddlerReq requests.CreateToddlerRequest, parentReq requests.CreateParentRequest) (*responses.ToddlerResponse, *responses.ParentResponse, *responses.PredictResponse, error)
+	CreateToddler(req requests.CreateToddlerRequest, userID int) (*responses.ToddlerResponse, *responses.PredictResponse, error)
+	CreateToddlerWithParent(toddlerReq requests.CreateToddlerRequest, parentReq requests.CreateParentRequest, userID int) (*responses.ToddlerResponse, *responses.ParentResponse, *responses.PredictResponse, error)
 	GetAllToddler(locationID int, name, pageStr, limitStr string) ([]responses.ToddlerResponse, *responses.PaginationMeta, error)
 	GetToddlerByID(id, locationID int) (*responses.ToddlerResponse, error)
-	UpdateToddlerByID(id, locationID int, req requests.UpdateToddlerRequest) (*responses.ToddlerResponse, *responses.PredictResponse, error)
-	DeleteToddlerByID(id, locationID int) error
+	UpdateToddlerByID(id, locationID, userID int, req requests.UpdateToddlerRequest) (*responses.ToddlerResponse, *responses.PredictResponse, error)
+	DeleteToddlerByID(id, locationID, userID int) error
 	CheckToddlerExists(phoneNumber, name string) (bool, *models.Toddler, error)
 	GetAllToddlerAllLocation(name, pageStr, limitStr string) ([]responses.ToddlerResponse, *responses.PaginationMeta, error)
-	UpdateToddlerByIDWithoutPredict(id, locationID int, req requests.UpdateToddlerRequest) (*responses.ToddlerResponse, error)
+	UpdateToddlerByIDWithoutPredict(id, locationID, userID int, req requests.UpdateToddlerRequest) (*responses.ToddlerResponse, error)
 }
 
 type toddlerService struct {
@@ -31,7 +31,7 @@ type toddlerService struct {
 }
 
 // UpdateToddlerByIDWithoutPredict implements ToddlerService.
-func (t *toddlerService) UpdateToddlerByIDWithoutPredict(id int, locationID int, req requests.UpdateToddlerRequest) (*responses.ToddlerResponse, error) {
+func (t *toddlerService) UpdateToddlerByIDWithoutPredict(id int, locationID, userID int, req requests.UpdateToddlerRequest) (*responses.ToddlerResponse, error) {
 	if req.Name != nil && strings.TrimSpace(*req.Name) == "" {
 		return nil, fmt.Errorf("nama tidak boleh kosong")
 	}
@@ -66,7 +66,9 @@ func (t *toddlerService) UpdateToddlerByIDWithoutPredict(id int, locationID int,
 		parentID = parent.ID
 	}
 
-	toddlerMapping := models.Toddler{}
+	toddlerMapping := models.Toddler{
+		UpdatedByID: userID,
+	}
 	if req.Name != nil {
 		toddlerMapping.Name = *req.Name
 	}
@@ -88,6 +90,8 @@ func (t *toddlerService) UpdateToddlerByIDWithoutPredict(id int, locationID int,
 		ID:                toddler.ID,
 		ParentID:          toddler.ParentID,
 		LocationID:        toddler.LocationID,
+		CreatedByID:       toddler.CreatedByID,
+		UpdatedByID:       toddler.UpdatedByID,
 		Name:              toddler.Name,
 		Birthdate:         toddler.Birthdate,
 		Sex:               toddler.Sex,
@@ -130,6 +134,8 @@ func (t *toddlerService) GetAllToddlerAllLocation(name, pageStr, limitStr string
 			ID:                v.ID,
 			ParentID:          v.ParentID,
 			LocationID:        v.LocationID,
+			CreatedByID:       v.CreatedByID,
+			UpdatedByID:       v.UpdatedByID,
 			Name:              v.Name,
 			Birthdate:         v.Birthdate,
 			Sex:               v.Sex,
@@ -161,7 +167,7 @@ func (t *toddlerService) CheckToddlerExists(phoneNumber, name string) (bool, *mo
 }
 
 // CreateToddler implements ToddlerService.
-func (t *toddlerService) CreateToddler(req requests.CreateToddlerRequest) (*responses.ToddlerResponse, *responses.PredictResponse, error) {
+func (t *toddlerService) CreateToddler(req requests.CreateToddlerRequest, userID int) (*responses.ToddlerResponse, *responses.PredictResponse, error) {
 	parent, err := t.parentRepo.FindParentByPhoneNumber(req.PhoneNumber)
 
 	if parent == nil {
@@ -169,12 +175,15 @@ func (t *toddlerService) CreateToddler(req requests.CreateToddlerRequest) (*resp
 	}
 
 	toddlerMapping := models.Toddler{
-		ParentID:   parent.ID,
-		Name:       req.Name,
-		Birthdate:  req.Birthdate,
-		Sex:        req.Sex,
-		Height:     req.Height,
-		LocationID: parent.LocationID,
+		ParentID:    parent.ID,
+		CreatedByID: userID,
+		UpdatedByID: userID,
+		DeletedByID: nil,
+		Name:        req.Name,
+		Birthdate:   req.Birthdate,
+		Sex:         req.Sex,
+		Height:      req.Height,
+		LocationID:  parent.LocationID,
 	}
 
 	if err != nil {
@@ -187,7 +196,7 @@ func (t *toddlerService) CreateToddler(req requests.CreateToddlerRequest) (*resp
 		return nil, nil, err
 	}
 
-	predict, err := t.predict.CreateIndividualPredict(req, toddler.LocationID, toddler.ID)
+	predict, err := t.predict.CreateIndividualPredict(req, toddler.LocationID, toddler.ID, userID)
 
 	if err != nil {
 		return nil, nil, err
@@ -214,6 +223,8 @@ func (t *toddlerService) CreateToddler(req requests.CreateToddlerRequest) (*resp
 		ID:                toddler.ID,
 		ParentID:          toddler.ParentID,
 		LocationID:        toddler.LocationID,
+		CreatedByID:       toddler.CreatedByID,
+		UpdatedByID:       toddler.UpdatedByID,
 		Name:              toddler.Name,
 		Birthdate:         toddler.Birthdate,
 		Sex:               toddler.Sex,
@@ -226,6 +237,7 @@ func (t *toddlerService) CreateToddler(req requests.CreateToddlerRequest) (*resp
 	predictResponse := responses.PredictResponse{
 		ID:                predict.ID,
 		ToddlerID:         predict.ToddlerID,
+		CreatedByID:       predict.CreatedByID,
 		Height:            predict.Height,
 		Age:               predict.Age,
 		Sex:               predict.Sex,
@@ -242,6 +254,7 @@ func (t *toddlerService) CreateToddler(req requests.CreateToddlerRequest) (*resp
 func (t *toddlerService) CreateToddlerWithParent(
 	toddlerReq requests.CreateToddlerRequest,
 	parentReq requests.CreateParentRequest,
+	userID int,
 ) (*responses.ToddlerResponse, *responses.ParentResponse, *responses.PredictResponse, error) {
 	if strings.TrimSpace(parentReq.Name) == "" ||
 		strings.TrimSpace(parentReq.PhoneNumber) == "" ||
@@ -267,6 +280,9 @@ func (t *toddlerService) CreateToddlerWithParent(
 	}
 
 	parentMapping := models.Parent{
+		CreatedByID: userID,
+		UpdatedByID: userID,
+		DeletedByID: nil,
 		Name:        parentReq.Name,
 		PhoneNumber: parentReq.PhoneNumber,
 		Address:     parentReq.Address,
@@ -281,12 +297,15 @@ func (t *toddlerService) CreateToddlerWithParent(
 	}
 
 	toddlerMapping := models.Toddler{
-		ParentID:   parent.ID,
-		Name:       toddlerReq.Name,
-		Birthdate:  toddlerReq.Birthdate,
-		Sex:        toddlerReq.Sex,
-		Height:     toddlerReq.Height,
-		LocationID: toddlerReq.LocationID,
+		ParentID:    parent.ID,
+		CreatedByID: userID,
+		UpdatedByID: userID,
+		DeletedByID: nil,
+		Name:        toddlerReq.Name,
+		Birthdate:   toddlerReq.Birthdate,
+		Sex:         toddlerReq.Sex,
+		Height:      toddlerReq.Height,
+		LocationID:  toddlerReq.LocationID,
 	}
 
 	toddler, err := t.repo.CreateToddler(&toddlerMapping)
@@ -294,7 +313,7 @@ func (t *toddlerService) CreateToddlerWithParent(
 		return nil, nil, nil, err
 	}
 
-	predict, err := t.predict.CreateIndividualPredict(toddlerReq, parentReq.LocationID, toddler.ID)
+	predict, err := t.predict.CreateIndividualPredict(toddlerReq, parentReq.LocationID, toddler.ID, userID)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -302,6 +321,9 @@ func (t *toddlerService) CreateToddlerWithParent(
 	toddlerModel := models.Toddler{
 		ParentID:          parent.ID,
 		LocationID:        parent.LocationID,
+		CreatedByID:       userID,
+		UpdatedByID:       userID,
+		DeletedByID:       nil,
 		Name:              toddler.Name,
 		Birthdate:         toddler.Birthdate,
 		Height:            toddler.Height,
@@ -321,6 +343,8 @@ func (t *toddlerService) CreateToddlerWithParent(
 		ID:                toddler.ID,
 		ParentID:          toddler.ParentID,
 		LocationID:        toddler.LocationID,
+		CreatedByID:       toddler.CreatedByID,
+		UpdatedByID:       toddler.UpdatedByID,
 		Name:              toddler.Name,
 		Birthdate:         toddler.Birthdate,
 		Sex:               toddler.Sex,
@@ -334,6 +358,8 @@ func (t *toddlerService) CreateToddlerWithParent(
 	parentResp := responses.ParentResponse{
 		ID:          parent.ID,
 		LocationID:  parent.LocationID,
+		CreatedByID: parent.CreatedByID,
+		UpdatedByID: parent.UpdatedByID,
 		Name:        parent.Name,
 		PhoneNumber: parent.PhoneNumber,
 		Address:     parent.Address,
@@ -346,6 +372,7 @@ func (t *toddlerService) CreateToddlerWithParent(
 	predictResponse := responses.PredictResponse{
 		ID:                predict.ID,
 		ToddlerID:         predict.ToddlerID,
+		CreatedByID:       predict.CreatedByID,
 		Height:            predict.Height,
 		Age:               predict.Age,
 		Sex:               predict.Sex,
@@ -359,8 +386,8 @@ func (t *toddlerService) CreateToddlerWithParent(
 }
 
 // DeleteToddlerByID implements ToddlerService.
-func (t *toddlerService) DeleteToddlerByID(id int, locationID int) error {
-	return t.repo.DeleteToddlerByID(id, locationID)
+func (t *toddlerService) DeleteToddlerByID(id int, locationID, userID int) error {
+	return t.repo.DeleteToddlerByID(id, locationID, userID)
 }
 
 // GetAllToddler implements ToddlerService.
@@ -393,6 +420,8 @@ func (t *toddlerService) GetAllToddler(locationID int, name, pageStr, limitStr s
 			ID:                v.ID,
 			ParentID:          v.ParentID,
 			LocationID:        v.LocationID,
+			CreatedByID:       v.CreatedByID,
+			UpdatedByID:       v.UpdatedByID,
 			Name:              v.Name,
 			Birthdate:         v.Birthdate,
 			Sex:               v.Sex,
@@ -426,6 +455,8 @@ func (t *toddlerService) GetToddlerByID(id int, locationID int) (*responses.Todd
 		ID:                toddler.ID,
 		ParentID:          toddler.ParentID,
 		LocationID:        toddler.LocationID,
+		CreatedByID:       toddler.CreatedByID,
+		UpdatedByID:       toddler.UpdatedByID,
 		Name:              toddler.Name,
 		Birthdate:         toddler.Birthdate,
 		Sex:               toddler.Sex,
@@ -441,8 +472,7 @@ func (t *toddlerService) GetToddlerByID(id int, locationID int) (*responses.Todd
 
 // UpdateToddlerByID implements ToddlerService.
 func (t *toddlerService) UpdateToddlerByID(
-	id int,
-	locationID int,
+	id, locationID, userID int,
 	req requests.UpdateToddlerRequest,
 ) (*responses.ToddlerResponse, *responses.PredictResponse, error) {
 
@@ -473,6 +503,7 @@ func (t *toddlerService) UpdateToddlerByID(
 		toddlerRequest,
 		locationID,
 		id,
+		userID,
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("gagal membuat prediksi: %w", err)
@@ -512,7 +543,9 @@ func (t *toddlerService) UpdateToddlerByID(
 		parentID = parent.ID
 	}
 
-	toddlerMapping := models.Toddler{}
+	toddlerMapping := models.Toddler{
+		UpdatedByID: userID,
+	}
 	if req.Name != nil {
 		toddlerMapping.Name = *req.Name
 	}
@@ -545,6 +578,8 @@ func (t *toddlerService) UpdateToddlerByID(
 		ID:                toddler.ID,
 		ParentID:          toddler.ParentID,
 		LocationID:        toddler.LocationID,
+		CreatedByID:       toddler.CreatedByID,
+		UpdatedByID:       toddler.UpdatedByID,
 		Name:              toddler.Name,
 		Birthdate:         toddler.Birthdate,
 		Sex:               toddler.Sex,
@@ -558,6 +593,7 @@ func (t *toddlerService) UpdateToddlerByID(
 	predictResponse := responses.PredictResponse{
 		ID:                predict.ID,
 		ToddlerID:         predict.ToddlerID,
+		CreatedByID:       predict.CreatedByID,
 		Name:              predict.Name,
 		Height:            predict.Height,
 		Age:               predict.Age,

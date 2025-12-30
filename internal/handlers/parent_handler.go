@@ -48,7 +48,7 @@ func (p *ParentHandler) CreateParent(ctx *fiber.Ctx) error {
 
 	req.LocationID = locationID
 
-	parentResp, err := p.service.CreateParent(req)
+	parentResp, err := p.service.CreateParent(req, userID)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
 			Success: false,
@@ -209,7 +209,7 @@ func (p *ParentHandler) UpdateParentByID(ctx *fiber.Ctx) error {
 		})
 	}
 
-	parentResponses, err := p.service.UpdateParentByID(id, locationID, req)
+	parentResponses, err := p.service.UpdateParentByID(id, locationID, userID, req)
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
@@ -262,7 +262,7 @@ func (p *ParentHandler) DeleteParentByID(ctx *fiber.Ctx) error {
 		})
 	}
 
-	err = p.service.DeleteParentByID(id, locationID)
+	err = p.service.DeleteParentByID(id, locationID, userID)
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{

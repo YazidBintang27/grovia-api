@@ -61,6 +61,7 @@ func (u *userService) GetUserById(targetUserID int, accesorRole string) (*respon
 		Nik:            user.Nik,
 		ProfilePicture: user.ProfilePicture,
 		Role:           user.Role,
+		IsActive:       user.IsActive,
 		CreatedBy:      user.CreatedBy,
 		CreatedAt:      user.CreatedAt,
 		UpdatedAt:      user.UpdatedAt,
@@ -112,6 +113,7 @@ func (u *userService) GetUsersByRole(requesterRole, name, pageStr, limitStr stri
 			Nik:            v.Nik,
 			ProfilePicture: v.ProfilePicture,
 			Role:           v.Role,
+			IsActive:       v.IsActive,
 			CreatedBy:      v.CreatedBy,
 			CreatedAt:      v.CreatedAt,
 			UpdatedAt:      v.UpdatedAt,
@@ -119,8 +121,8 @@ func (u *userService) GetUsersByRole(requesterRole, name, pageStr, limitStr stri
 	}
 
 	meta := responses.PaginationMeta{
-		Page: page,
-		Limit: limit,
+		Page:      page,
+		Limit:     limit,
 		TotalData: total,
 		TotalPage: totalPage,
 	}
@@ -205,6 +207,7 @@ func (u *userService) CreateUser(req requests.CreateUserRequest, createdBy strin
 		Nik:            req.Nik,
 		ProfilePicture: url,
 		Role:           req.Role,
+		IsActive:       true,
 		Password:       hashedPassword,
 		CreatedBy:      createdBy,
 	}
@@ -224,6 +227,7 @@ func (u *userService) CreateUser(req requests.CreateUserRequest, createdBy strin
 		Nik:            user.Nik,
 		ProfilePicture: user.ProfilePicture,
 		Role:           user.Role,
+		IsActive:       user.IsActive,
 		CreatedBy:      user.CreatedBy,
 		CreatedAt:      user.CreatedAt,
 		UpdatedAt:      user.UpdatedAt,
@@ -254,6 +258,7 @@ func (u *userService) GetCurrentUser(id int) (*responses.UserResponse, error) {
 		Nik:            user.Nik,
 		ProfilePicture: user.ProfilePicture,
 		Role:           user.Role,
+		IsActive:       user.IsActive,
 		CreatedBy:      user.CreatedBy,
 		CreatedAt:      user.CreatedAt,
 		UpdatedAt:      user.UpdatedAt,

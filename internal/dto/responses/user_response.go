@@ -11,6 +11,7 @@ type UserResponse struct {
 	Nik            string    `json:"nik"`
 	ProfilePicture string    `json:"profilePicture"`
 	Role           string    `json:"role"`
+	IsActive       bool      `json:"isActive"`
 	CreatedBy      string    `json:"createdBy"`
 	CreatedAt      time.Time `json:"createdAt"`
 	UpdatedAt      time.Time `json:"updatedAt"`

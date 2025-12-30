@@ -64,7 +64,7 @@ func (l *LocationHandler) CreateLocation(ctx *fiber.Ctx) error {
 		req.Picture = file
 	}
 
-	locationResponse, err := l.service.CreateLocation(req)
+	locationResponse, err := l.service.CreateLocation(req, userID)
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
@@ -255,7 +255,7 @@ func (l *LocationHandler) UpdateLocationByID(ctx *fiber.Ctx) error {
 		})
 	}
 
-	locationResponse, err := l.service.UpdateLocationByID(id, req)
+	locationResponse, err := l.service.UpdateLocationByID(id, userID, req)
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
@@ -320,7 +320,7 @@ func (l *LocationHandler) DeleteLocationByID(ctx *fiber.Ctx) error {
 		})
 	}
 
-	err = l.service.DeleteLocationByID(id)
+	err = l.service.DeleteLocationByID(id, userID)
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{

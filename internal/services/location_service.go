@@ -14,11 +14,11 @@ import (
 )
 
 type LocationService interface {
-	CreateLocation(req requests.LocationRequest) (*responses.LocationResponse, error)
+	CreateLocation(req requests.LocationRequest, userID int) (*responses.LocationResponse, error)
 	GetAllLocation(name, pageStr, limitStr string) ([]responses.LocationResponse, *responses.PaginationMeta, error)
 	GetLocationByID(id int) (*responses.LocationResponse, error)
-	UpdateLocationByID(id int, req requests.LocationRequest) (*responses.LocationResponse, error)
-	DeleteLocationByID(id int) error
+	UpdateLocationByID(id, userID int, req requests.LocationRequest) (*responses.LocationResponse, error)
+	DeleteLocationByID(id, userID int) error
 }
 
 type locationService struct {
@@ -27,7 +27,7 @@ type locationService struct {
 }
 
 // CreateLocation implements LocationService.
-func (l *locationService) CreateLocation(req requests.LocationRequest) (*responses.LocationResponse, error) {
+func (l *locationService) CreateLocation(req requests.LocationRequest, userID int) (*responses.LocationResponse, error) {
 	if strings.TrimSpace(req.Name) == "" {
 		return nil, fmt.Errorf("nama lokasi tidak boleh kosong")
 	}
@@ -36,8 +36,8 @@ func (l *locationService) CreateLocation(req requests.LocationRequest) (*respons
 	}
 
 	locationMapping := models.Location{
-		Name:    req.Name,
-		Address: req.Address,
+		Name:        req.Name,
+		Address:     req.Address,
 	}
 
 	var url string
@@ -60,20 +60,20 @@ func (l *locationService) CreateLocation(req requests.LocationRequest) (*respons
 	}
 
 	locationResponse := responses.LocationResponse{
-		ID:        location.ID,
-		Name:      location.Name,
-		Address:   location.Address,
-		Picture:   location.Picture,
-		CreatedAt: location.CreatedAt,
-		UpdatedAt: location.UpdatedAt,
+		ID:          location.ID,
+		Name:        location.Name,
+		Address:     location.Address,
+		Picture:     location.Picture,
+		CreatedAt:   location.CreatedAt,
+		UpdatedAt:   location.UpdatedAt,
 	}
 
 	return &locationResponse, nil
 }
 
 // DeleteLocationByID implements LocationService.
-func (l *locationService) DeleteLocationByID(id int) error {
-	return l.repo.DeleteLocationByID(id)
+func (l *locationService) DeleteLocationByID(id, userID int) error {
+	return l.repo.DeleteLocationByID(id, userID)
 }
 
 // GetAllLocation implements LocationService.
@@ -131,19 +131,19 @@ func (l *locationService) GetLocationByID(id int) (*responses.LocationResponse, 
 	}
 
 	locationResponse := responses.LocationResponse{
-		ID:        location.ID,
-		Name:      location.Name,
-		Address:   location.Address,
-		Picture:   location.Picture,
-		CreatedAt: location.CreatedAt,
-		UpdatedAt: location.UpdatedAt,
+		ID:          location.ID,
+		Name:        location.Name,
+		Address:     location.Address,
+		Picture:     location.Picture,
+		CreatedAt:   location.CreatedAt,
+		UpdatedAt:   location.UpdatedAt,
 	}
 
 	return &locationResponse, nil
 }
 
 // UpdateLocationByID implements LocationService.
-func (l *locationService) UpdateLocationByID(id int, req requests.LocationRequest) (*responses.LocationResponse, error) {
+func (l *locationService) UpdateLocationByID(id, userID int, req requests.LocationRequest) (*responses.LocationResponse, error) {
 	if strings.TrimSpace(req.Name) == "" {
 		return nil, errors.New("nama lokasi tidak boleh kosong")
 	}
@@ -164,8 +164,8 @@ func (l *locationService) UpdateLocationByID(id int, req requests.LocationReques
 	log.Println("[DEBUG] Location Picture URL:", url)
 
 	locationMapping := models.Location{
-		Name:    req.Name,
-		Address: req.Address,
+		Name:        req.Name,
+		Address:     req.Address,
 	}
 
 	if url != "" {
@@ -178,12 +178,12 @@ func (l *locationService) UpdateLocationByID(id int, req requests.LocationReques
 	}
 
 	locationResponse := responses.LocationResponse{
-		ID:        location.ID,
-		Name:      location.Name,
-		Address:   location.Address,
-		Picture:   location.Picture,
-		CreatedAt: location.CreatedAt,
-		UpdatedAt: location.UpdatedAt,
+		ID:          location.ID,
+		Name:        location.Name,
+		Address:     location.Address,
+		Picture:     location.Picture,
+		CreatedAt:   location.CreatedAt,
+		UpdatedAt:   location.UpdatedAt,
 	}
 
 	return &locationResponse, nil

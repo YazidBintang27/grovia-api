@@ -14,11 +14,11 @@ import (
 )
 
 type ParentService interface {
-	CreateParent(req requests.CreateParentRequest) (*responses.ParentResponse, error)
+	CreateParent(req requests.CreateParentRequest, userID int) (*responses.ParentResponse, error)
 	GetAllParent(locationID int, name, pageStr, limitStr string) ([]responses.ParentResponse, *responses.PaginationMeta, error)
 	GetParentByID(id, locationID int) (*responses.ParentResponse, error)
-	UpdateParentByID(id, locationID int, req requests.UpdateParentRequest) (*responses.ParentResponse, error)
-	DeleteParentByID(id, locationID int) error
+	UpdateParentByID(id, locationID, userID int, req requests.UpdateParentRequest) (*responses.ParentResponse, error)
+	DeleteParentByID(id, locationID, userID int) error
 	CheckPhoneExists(phoneNumber string) (*models.Parent, error)
 	GetAllParentAllLocation(name, pageStr, limitStr string) ([]responses.ParentResponse, *responses.PaginationMeta, error)
 }
@@ -28,7 +28,7 @@ type parentService struct {
 }
 
 // CreateParent implements ParentService.
-func (p *parentService) CreateParent(req requests.CreateParentRequest) (*responses.ParentResponse, error) {
+func (p *parentService) CreateParent(req requests.CreateParentRequest, userID int) (*responses.ParentResponse, error) {
 	if strings.TrimSpace(req.Name) == "" ||
 		strings.TrimSpace(req.PhoneNumber) == "" ||
 		strings.TrimSpace(req.Address) == "" ||
@@ -46,6 +46,9 @@ func (p *parentService) CreateParent(req requests.CreateParentRequest) (*respons
 	}
 
 	parentMapping := models.Parent{
+		CreatedByID: userID,
+		UpdatedByID: userID,
+		DeletedByID: nil,
 		Name:        req.Name,
 		PhoneNumber: req.PhoneNumber,
 		Address:     req.Address,
@@ -63,6 +66,8 @@ func (p *parentService) CreateParent(req requests.CreateParentRequest) (*respons
 	parentResp := responses.ParentResponse{
 		ID:          parent.ID,
 		LocationID:  parent.LocationID,
+		CreatedByID: parent.CreatedByID,
+		UpdatedByID: parent.UpdatedByID,
 		Name:        parent.Name,
 		PhoneNumber: parent.PhoneNumber,
 		Address:     parent.Address,
@@ -103,6 +108,8 @@ func (p *parentService) GetAllParentAllLocation(name, pageStr, limitStr string) 
 		parentResponses = append(parentResponses, responses.ParentResponse{
 			ID:          v.ID,
 			LocationID:  v.LocationID,
+			CreatedByID: v.CreatedByID,
+			UpdatedByID: v.UpdatedByID,
 			Name:        v.Name,
 			PhoneNumber: v.PhoneNumber,
 			Address:     v.Address,
@@ -129,8 +136,8 @@ func (p *parentService) CheckPhoneExists(phoneNumber string) (*models.Parent, er
 }
 
 // DeleteParentByID implements ParentService.
-func (p *parentService) DeleteParentByID(id int, locationID int) error {
-	return p.repo.DeleteParentByID(id, locationID)
+func (p *parentService) DeleteParentByID(id int, locationID, userID int) error {
+	return p.repo.DeleteParentByID(id, locationID, userID)
 }
 
 // GetAllParent implements ParentService.
@@ -162,6 +169,8 @@ func (p *parentService) GetAllParent(locationID int, name, pageStr, limitStr str
 		parentResponse = append(parentResponse, responses.ParentResponse{
 			ID:          v.ID,
 			LocationID:  v.LocationID,
+			CreatedByID: v.CreatedByID,
+			UpdatedByID: v.UpdatedByID,
 			Name:        v.Name,
 			PhoneNumber: v.PhoneNumber,
 			Address:     v.Address,
@@ -190,14 +199,36 @@ func (p *parentService) GetParentByID(id int, locationID int) (*responses.Parent
 		return nil, err
 	}
 
+	var toddlerResponses []responses.ToddlerResponse
+	for _, t := range parent.Toddlers {
+		toddlerResponses = append(toddlerResponses, responses.ToddlerResponse{
+			ID:                t.ID,
+			ParentID:          t.ParentID,
+			LocationID:        t.LocationID,
+			CreatedByID:       t.CreatedByID,
+			UpdatedByID:       t.UpdatedByID,
+			Name:              t.Name,
+			Birthdate:         t.Birthdate,
+			Sex:               t.Sex,
+			Height:            t.Height,
+			ProfilePicture:    t.ProfilePicture,
+			NutritionalStatus: t.NutritionalStatus,
+			CreatedAt:         t.CreatedAt,
+			UpdatedAt:         t.UpdatedAt,
+		})
+	}
+
 	parentResponses := responses.ParentResponse{
 		ID:          parent.ID,
 		LocationID:  parent.LocationID,
+		CreatedByID: parent.CreatedByID,
+		UpdatedByID: parent.UpdatedByID,
 		Name:        parent.Name,
 		PhoneNumber: parent.PhoneNumber,
 		Address:     parent.Address,
 		Nik:         parent.Nik,
 		Job:         parent.Job,
+		Toddlers:    toddlerResponses,
 		CreatedAt:   parent.CreatedAt,
 		UpdatedAt:   parent.UpdatedAt,
 	}
@@ -206,8 +237,10 @@ func (p *parentService) GetParentByID(id int, locationID int) (*responses.Parent
 }
 
 // UpdateParentByID implements ParentService.
-func (p *parentService) UpdateParentByID(id int, locationID int, req requests.UpdateParentRequest) (*responses.ParentResponse, error) {
-	parentMapping := models.Parent{}
+func (p *parentService) UpdateParentByID(id int, locationID, userID int, req requests.UpdateParentRequest) (*responses.ParentResponse, error) {
+	parentMapping := models.Parent{
+		UpdatedByID: userID,
+	}
 
 	if req.Name != nil {
 		trimmed := strings.TrimSpace(*req.Name)
@@ -260,6 +293,8 @@ func (p *parentService) UpdateParentByID(id int, locationID int, req requests.Up
 	parentResponse := responses.ParentResponse{
 		ID:          parent.ID,
 		LocationID:  parent.LocationID,
+		CreatedByID: parent.CreatedByID,
+		UpdatedByID: parent.UpdatedByID,
 		Name:        parent.Name,
 		PhoneNumber: parent.PhoneNumber,
 		Address:     parent.Address,

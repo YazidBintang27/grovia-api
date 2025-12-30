@@ -19,13 +19,13 @@ import (
 )
 
 type PredictService interface {
-	CreateIndividualPredict(req requests.CreateToddlerRequest, locationID, toddlerID int) (*responses.PredictResponse, error)
+	CreateIndividualPredict(req requests.CreateToddlerRequest, locationID, toddlerID, userID int) (*responses.PredictResponse, error)
 	CreateGroupPredict(filePath string) ([]byte, error)
 	GetAllPredict(locationID int, pageStr, limitStr string) ([]responses.PredictResponse, *responses.PaginationMeta, error)
 	GetAllPredictByToddlerID(locationID, toddlerID int) ([]responses.PredictResponse, error)
 	GetPredictByID(id int) (*responses.PredictResponse, error)
 	UpdatePredictByID(id int, req *requests.UpdatePredictRequest) (*responses.PredictResponse, error)
-	DeletePredictByID(id, locationID int) error
+	DeletePredictByID(id, locationID, userID int) error
 	GetAllPredictAllLocation(pageStr, limitStr string) ([]responses.PredictResponse, *responses.PaginationMeta, error)
 }
 
@@ -57,15 +57,12 @@ func (p *predictService) GetAllPredictAllLocation(pageStr, limitStr string) ([]r
 
 	totalPage := int(math.Ceil(float64(total) / float64(limit)))
 
-	if err != nil {
-		return nil, nil, err
-	}
-
 	var predictResponses []responses.PredictResponse
 	for _, v := range predicts {
 		predictResponses = append(predictResponses, responses.PredictResponse{
 			ID:                v.ID,
 			ToddlerID:         v.ToddlerID,
+			CreatedByID:       v.CreatedByID,
 			Name:              v.Name,
 			Height:            v.Height,
 			Age:               v.Age,
@@ -135,7 +132,7 @@ func (p *predictService) CreateGroupPredict(filePath string) ([]byte, error) {
 }
 
 // CreateIndividualPredict implements PredictService.
-func (p *predictService) CreateIndividualPredict(req requests.CreateToddlerRequest, locationID, toddlerID int) (*responses.PredictResponse, error) {
+func (p *predictService) CreateIndividualPredict(req requests.CreateToddlerRequest, locationID, toddlerID, userID int) (*responses.PredictResponse, error) {
 	today := time.Now()
 
 	age := (today.Year()-req.Birthdate.Year())*12 + int(today.Month()) - int(req.Birthdate.Month())
@@ -161,6 +158,8 @@ func (p *predictService) CreateIndividualPredict(req requests.CreateToddlerReque
 	}
 
 	predictModel := &models.Predict{
+		CreatedByID:       userID,
+		DeletedByID:       nil,
 		Name:              req.Name,
 		Height:            req.Height,
 		Age:               age,
@@ -180,6 +179,7 @@ func (p *predictService) CreateIndividualPredict(req requests.CreateToddlerReque
 	return &responses.PredictResponse{
 		ID:                saved.ID,
 		ToddlerID:         saved.ToddlerID,
+		CreatedByID:       saved.CreatedByID,
 		Name:              saved.Name,
 		Height:            saved.Height,
 		Age:               saved.Age,
@@ -192,8 +192,8 @@ func (p *predictService) CreateIndividualPredict(req requests.CreateToddlerReque
 }
 
 // DeletePredictByID implements PredictService.
-func (p *predictService) DeletePredictByID(id int, locationID int) error {
-	return p.repo.DeletePredictByID(id, locationID)
+func (p *predictService) DeletePredictByID(id int, locationID, userID int) error {
+	return p.repo.DeletePredictByID(id, locationID, userID)
 }
 
 // GetAllPredict implements PredictService.
@@ -224,6 +224,7 @@ func (p *predictService) GetAllPredict(locationID int, pageStr, limitStr string)
 		responsesList = append(responsesList, responses.PredictResponse{
 			ID:                pred.ID,
 			ToddlerID:         pred.ToddlerID,
+			CreatedByID:       pred.CreatedByID,
 			Name:              pred.Name,
 			Height:            pred.Height,
 			Age:               pred.Age,
@@ -257,6 +258,7 @@ func (p *predictService) GetAllPredictByToddlerID(locationID int, toddlerID int)
 		responsesList = append(responsesList, responses.PredictResponse{
 			ID:                pred.ID,
 			ToddlerID:         pred.ToddlerID,
+			CreatedByID:       pred.CreatedByID,
 			Name:              pred.Name,
 			Height:            pred.Height,
 			Age:               pred.Age,
@@ -281,6 +283,7 @@ func (p *predictService) GetPredictByID(id int) (*responses.PredictResponse, err
 	return &responses.PredictResponse{
 		ID:                predict.ID,
 		ToddlerID:         predict.ToddlerID,
+		CreatedByID:       predict.CreatedByID,
 		Name:              predict.Name,
 		Height:            predict.Height,
 		Age:               predict.Age,
@@ -296,6 +299,7 @@ func (p *predictService) GetPredictByID(id int) (*responses.PredictResponse, err
 func (p *predictService) UpdatePredictByID(id int, req *requests.UpdatePredictRequest) (*responses.PredictResponse, error) {
 	predictModel := &models.Predict{
 		ID:                id,
+		DeletedByID:       nil,
 		Height:            *req.Height,
 		Age:               *req.Age,
 		Sex:               req.Sex,
@@ -312,6 +316,7 @@ func (p *predictService) UpdatePredictByID(id int, req *requests.UpdatePredictRe
 	return &responses.PredictResponse{
 		ID:                updated.ID,
 		ToddlerID:         updated.ToddlerID,
+		CreatedByID:       updated.CreatedByID,
 		Name:              updated.Name,
 		Height:            updated.Height,
 		Age:               updated.Age,

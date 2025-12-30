@@ -13,7 +13,7 @@ type ParentRepository interface {
 	GetAllParent(locationID, limit, offset int, name string) ([]models.Parent, int, error)
 	GetParentByID(id, locationID int) (*models.Parent, error)
 	UpdateParentByID(id, locationID int, parent *models.Parent) (*models.Parent, error)
-	DeleteParentByID(id, locationID int) error
+	DeleteParentByID(id, locationID, userID int) error
 	FindParentByPhoneNumber(phoneNumber string) (*models.Parent, error)
 	GetAllParentAllLocation(name string, limit, offset int) ([]models.Parent, int, error)
 }
@@ -27,7 +27,7 @@ func (p *parentRepository) GetAllParentAllLocation(name string, limit, offset in
 	var parents []models.Parent
 	var total int64
 
-	db := p.db.Model(&parents)
+	db := p.db.Model(&parents).Where("deleted_at IS NULL")
 
 	if strings.TrimSpace(name) != "" {
 		normalizedName := strings.ToLower(strings.ReplaceAll(name, " ", ""))
@@ -66,24 +66,48 @@ func (p *parentRepository) FindParentByPhoneNumber(phoneNumber string) (*models.
 }
 
 // DeleteParentByID implements ParentRepository.
-func (p *parentRepository) DeleteParentByID(id, locationID int) error {
+func (p *parentRepository) DeleteParentByID(id, locationID, userID int) error {
 	if locationID == 1 {
-		tx := p.db.Where("id = ?", id).Delete(&models.Parent{})
-		if tx.Error != nil {
-			return tx.Error
+		res := p.db.Model(&models.Parent{}).
+			Where("id = ?", id).
+			Updates(map[string]any{
+				"deleted_by_id": userID,
+				"deleted_at":    gorm.Expr("NOW()"),
+			})
+
+		if res.Error != nil {
+			return res.Error
 		}
-		if tx.RowsAffected == 0 {
+
+		if res.RowsAffected == 0 {
 			return gorm.ErrRecordNotFound
 		}
 	} else {
-		tx := p.db.Where("id = ? AND location_id = ?", id, locationID).Delete(&models.Parent{})
-		if tx.Error != nil {
-			return tx.Error
+		res := p.db.Model(&models.Parent{}).
+			Where("id = ? AND location_id = ?", id, locationID).
+			Updates(map[string]any{
+				"deleted_by_id": userID,
+				"deleted_at":    gorm.Expr("NOW()"),
+			})
+
+		if res.Error != nil {
+			return res.Error
 		}
-		if tx.RowsAffected == 0 {
+
+		if res.RowsAffected == 0 {
 			return gorm.ErrRecordNotFound
 		}
 	}
+
+	if err := p.db.Model(&models.Toddler{}).
+		Where("parent_id = ? AND deleted_at IS NULL", id).
+		Updates(map[string]any{
+			"deleted_by_id": userID,
+			"deleted_at":    gorm.Expr("NOW()"),
+		}).Error; err != nil {
+		return err
+	}
+	
 	return nil
 }
 
@@ -92,7 +116,7 @@ func (p *parentRepository) GetAllParent(locationID, limit, offset int, name stri
 	var parents []models.Parent
 	var total int64
 
-	db := p.db.Model(&parents)
+	db := p.db.Model(&parents).Where("deleted_at IS NULL")
 
 	db = db.Where("location_id = ?", locationID)
 
@@ -116,8 +140,12 @@ func (p *parentRepository) GetAllParent(locationID, limit, offset int, name stri
 func (p *parentRepository) GetParentByID(id, locationID int) (*models.Parent, error) {
 	var parent models.Parent
 
+	db := p.db.Preload("Toddlers", func(tx *gorm.DB) *gorm.DB {
+		return tx.Where("deleted_at IS NULL")
+	})
+
 	if locationID == 1 {
-		tx := p.db.Where("id = ?", id).Find(&parent)
+		tx := db.Where("id = ?", id).Find(&parent)
 
 		if tx.Error != nil {
 			return nil, tx.Error
@@ -126,7 +154,7 @@ func (p *parentRepository) GetParentByID(id, locationID int) (*models.Parent, er
 			return nil, gorm.ErrRecordNotFound
 		}
 	} else {
-		tx := p.db.Where("id = ? AND location_id = ?", id, locationID).Find(&parent)
+		tx := db.Where("id = ? AND location_id = ?", id, locationID).Find(&parent)
 
 		if tx.Error != nil {
 			return nil, tx.Error

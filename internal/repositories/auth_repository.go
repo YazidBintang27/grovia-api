@@ -19,7 +19,7 @@ type authRepository struct {
 // FindByID implements AuthRepository.
 func (a *authRepository) FindByID(id int) (*models.User, error) {
 	var user models.User
-	err := a.db.First(&user, id).Error
+	err := a.db.Where("is_active = true").First(&user, id).Error
 	if err != nil {
 		return nil, err
 	}
@@ -37,7 +37,7 @@ func (a *authRepository) ResetPassword(phoneNumber string, newPassword string) e
 // FindByPhoneNumber implements AuthRepository.
 func (a *authRepository) FindByPhoneNumber(phoneNumber string) (*models.User, error) {
 	var user models.User
-	err := a.db.Where("phone_number = ?", phoneNumber).First(&user).Error
+	err := a.db.Where("phone_number = ? AND is_active = true", phoneNumber).First(&user).Error
 
 	if err != nil {
 		return nil, err

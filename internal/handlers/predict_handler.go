@@ -288,7 +288,7 @@ func (h *PredictHandler) DeletePredictByID(ctx *fiber.Ctx) error {
 		})
 	}
 
-	if err := h.service.DeletePredictByID(id, locationID); err != nil {
+	if err := h.service.DeletePredictByID(id, locationID, userID); err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
 			Success: false,
 			Message: "Internal Server Error",

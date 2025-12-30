@@ -5,6 +5,7 @@ import "time"
 type PredictResponse struct {
 	ID                int       `json:"id"`
 	ToddlerID         int       `json:"toddlerID"`
+	CreatedByID       int       `json:"createdByID"`
 	Name              string    `json:"name"`
 	Height            float64   `json:"height"`
 	Age               int       `json:"age"`
