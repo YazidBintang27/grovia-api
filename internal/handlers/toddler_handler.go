@@ -292,7 +292,7 @@ func (t *ToddlerHandler) UpdateToddlerByID(ctx *fiber.Ctx) error {
 		})
 	}
 
-	toddlerResponse, predictResponse, err := t.service.UpdateToddlerByID(id, locationID, userID, req)
+	toddlerResponse, predictResponse, err := t.service.UpdateToddlerByID(ctx.Context(), id, locationID, userID, req)
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
@@ -383,7 +383,7 @@ func (t *ToddlerHandler) UpdateToddlerByIDWithoutPredict(ctx *fiber.Ctx) error {
 		})
 	}
 
-	toddlerResponse, err := t.service.UpdateToddlerByIDWithoutPredict(id, locationID, userID, req)
+	toddlerResponse, err := t.service.UpdateToddlerByIDWithoutPredict(ctx.Context(), id, locationID, userID, req)
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{

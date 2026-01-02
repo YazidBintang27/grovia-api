@@ -53,7 +53,7 @@ func (u *UserHandler) CreateUser(ctx *fiber.Ctx) error {
 		req.ProfilePicture = file
 	}
 
-	user, err := u.service.CreateUser(req, role, locationID)
+	user, err := u.service.CreateUser(ctx.Context(), req, role, locationID)
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
@@ -240,7 +240,7 @@ func (u *UserHandler) UpdateCurrentUser(ctx *fiber.Ctx) error {
 		req.ProfilePicture = file
 	}
 
-	user, err := u.service.UpdateCurrentUser(userID, req)
+	user, err := u.service.UpdateCurrentUser(ctx.Context(), userID, req)
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
@@ -310,7 +310,7 @@ func (u *UserHandler) UpdateUserByID(ctx *fiber.Ctx) error {
 		})
 	}
 
-	user, err := u.service.UpdateUserByID(id, req, role.(string))
+	user, err := u.service.UpdateUserByID(ctx.Context(), id, req, role.(string))
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{

@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"grovia/internal/dto/requests"
@@ -15,12 +16,12 @@ import (
 )
 
 type UserService interface {
-	CreateUser(req requests.CreateUserRequest, createdBy string, locationID int) (*responses.UserResponse, error)
+	CreateUser(ctx context.Context, req requests.CreateUserRequest, createdBy string, locationID int) (*responses.UserResponse, error)
 	GetCurrentUser(id int) (*responses.UserResponse, error)
 	GetUsersByRole(requesterRole, name, pageStr, limitStr string, locationID int) ([]responses.UserResponse, *responses.PaginationMeta, error)
 	GetUserById(targetUserID int, accesorRole string) (*responses.UserResponse, error)
-	UpdateCurrentUser(id int, req requests.UpdateUserRequest) (*responses.UserResponse, error)
-	UpdateUserByID(targetUserID int, req requests.UpdateUserRequest, updaterRole string) (*responses.UserResponse, error)
+	UpdateCurrentUser(ctx context.Context, id int, req requests.UpdateUserRequest) (*responses.UserResponse, error)
+	UpdateUserByID(ctx context.Context, targetUserID int, req requests.UpdateUserRequest, updaterRole string) (*responses.UserResponse, error)
 	DeleteCurrentUser(id int) error
 	DeleteUserByID(targetUserID int, role string) error
 }
@@ -146,7 +147,7 @@ func (u *userService) DeleteUserByID(targetUserID int, updaterRole string) error
 }
 
 // CreateUser implements UserService.
-func (u *userService) CreateUser(req requests.CreateUserRequest, createdBy string, locationID int) (*responses.UserResponse, error) {
+func (u *userService) CreateUser(ctx context.Context, req requests.CreateUserRequest, createdBy string, locationID int) (*responses.UserResponse, error) {
 
 	if !u.rolePermission(createdBy, req.Role) {
 		return nil, fmt.Errorf("role %s tidak diizinkan membuat user dengan role %s", createdBy, req.Role)
@@ -173,7 +174,7 @@ func (u *userService) CreateUser(req requests.CreateUserRequest, createdBy strin
 	var err error
 
 	if req.ProfilePicture != nil && req.ProfilePicture.Filename != "" && req.ProfilePicture.Size > 0 {
-		url, err = u.s3.UploadFile(req.ProfilePicture, "users")
+		url, err = u.s3.UploadFile(ctx, req.ProfilePicture, "users")
 		if err != nil {
 			return nil, fmt.Errorf("gagal upload foto profil: %v", err)
 		}
@@ -268,7 +269,7 @@ func (u *userService) GetCurrentUser(id int) (*responses.UserResponse, error) {
 }
 
 // UpdateCurrentUser implements UserService.
-func (u *userService) UpdateCurrentUser(id int, req requests.UpdateUserRequest) (*responses.UserResponse, error) {
+func (u *userService) UpdateCurrentUser(ctx context.Context, id int, req requests.UpdateUserRequest) (*responses.UserResponse, error) {
 	if req.PhoneNumber != nil {
 		phone := strings.TrimSpace(*req.PhoneNumber)
 		if phone != "" {
@@ -290,7 +291,7 @@ func (u *userService) UpdateCurrentUser(id int, req requests.UpdateUserRequest) 
 	var err error
 
 	if req.ProfilePicture != nil && req.ProfilePicture.Filename != "" && req.ProfilePicture.Size > 0 {
-		url, err = u.s3.UploadFile(req.ProfilePicture, "users")
+		url, err = u.s3.UploadFile(ctx, req.ProfilePicture, "users")
 		if err != nil {
 			return nil, fmt.Errorf("gagal upload foto profil: %v", err)
 		}
@@ -345,6 +346,7 @@ func (u *userService) UpdateCurrentUser(id int, req requests.UpdateUserRequest) 
 
 // UpdateUserByID implements UserService.
 func (u *userService) UpdateUserByID(
+	ctx context.Context,
 	targetUserID int,
 	req requests.UpdateUserRequest,
 	updaterRole string,
@@ -387,7 +389,7 @@ func (u *userService) UpdateUserByID(
 	var err error
 
 	if req.ProfilePicture != nil && req.ProfilePicture.Filename != "" && req.ProfilePicture.Size > 0 {
-		url, err = u.s3.UploadFile(req.ProfilePicture, "users")
+		url, err = u.s3.UploadFile(ctx, req.ProfilePicture, "users")
 		if err != nil {
 			return nil, fmt.Errorf("gagal upload foto profil: %v", err)
 		}

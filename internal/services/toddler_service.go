@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"grovia/internal/dto/requests"
 	"grovia/internal/dto/responses"
@@ -16,11 +17,11 @@ type ToddlerService interface {
 	CreateToddlerWithParent(toddlerReq requests.CreateToddlerRequest, parentReq requests.CreateParentRequest, userID int) (*responses.ToddlerResponse, *responses.ParentResponse, *responses.PredictResponse, error)
 	GetAllToddler(locationID int, name, pageStr, limitStr string) ([]responses.ToddlerResponse, *responses.PaginationMeta, error)
 	GetToddlerByID(id, locationID int) (*responses.ToddlerResponse, error)
-	UpdateToddlerByID(id, locationID, userID int, req requests.UpdateToddlerRequest) (*responses.ToddlerResponse, *responses.PredictResponse, error)
+	UpdateToddlerByID(ctx context.Context, id, locationID, userID int, req requests.UpdateToddlerRequest) (*responses.ToddlerResponse, *responses.PredictResponse, error)
 	DeleteToddlerByID(id, locationID, userID int) error
 	CheckToddlerExists(phoneNumber, name string) (bool, *models.Toddler, error)
 	GetAllToddlerAllLocation(name, pageStr, limitStr string) ([]responses.ToddlerResponse, *responses.PaginationMeta, error)
-	UpdateToddlerByIDWithoutPredict(id, locationID, userID int, req requests.UpdateToddlerRequest) (*responses.ToddlerResponse, error)
+	UpdateToddlerByIDWithoutPredict(ctx context.Context, id, locationID, userID int, req requests.UpdateToddlerRequest) (*responses.ToddlerResponse, error)
 }
 
 type toddlerService struct {
@@ -31,7 +32,7 @@ type toddlerService struct {
 }
 
 // UpdateToddlerByIDWithoutPredict implements ToddlerService.
-func (t *toddlerService) UpdateToddlerByIDWithoutPredict(id int, locationID, userID int, req requests.UpdateToddlerRequest) (*responses.ToddlerResponse, error) {
+func (t *toddlerService) UpdateToddlerByIDWithoutPredict(ctx context.Context, id int, locationID, userID int, req requests.UpdateToddlerRequest) (*responses.ToddlerResponse, error) {
 	if req.Name != nil && strings.TrimSpace(*req.Name) == "" {
 		return nil, fmt.Errorf("nama tidak boleh kosong")
 	}
@@ -51,7 +52,7 @@ func (t *toddlerService) UpdateToddlerByIDWithoutPredict(id int, locationID, use
 	var url string
 	var err error
 	if req.ProfilePicture != nil && req.ProfilePicture.Filename != "" && req.ProfilePicture.Size > 0 {
-		url, err = t.s3.UploadFile(req.ProfilePicture, "toddlers")
+		url, err = t.s3.UploadFile(ctx, req.ProfilePicture, "toddlers")
 		if err != nil {
 			return nil, fmt.Errorf("gagal upload foto: %v", err)
 		}
@@ -472,7 +473,7 @@ func (t *toddlerService) GetToddlerByID(id int, locationID int) (*responses.Todd
 
 // UpdateToddlerByID implements ToddlerService.
 func (t *toddlerService) UpdateToddlerByID(
-	id, locationID, userID int,
+	ctx context.Context, id, locationID, userID int,
 	req requests.UpdateToddlerRequest,
 ) (*responses.ToddlerResponse, *responses.PredictResponse, error) {
 
@@ -528,7 +529,7 @@ func (t *toddlerService) UpdateToddlerByID(
 	var url string
 
 	if req.ProfilePicture != nil && req.ProfilePicture.Filename != "" && req.ProfilePicture.Size > 0 {
-		url, err = t.s3.UploadFile(req.ProfilePicture, "toddlers")
+		url, err = t.s3.UploadFile(ctx, req.ProfilePicture, "toddlers")
 		if err != nil {
 			return nil, nil, fmt.Errorf("gagal upload foto: %v", err)
 		}

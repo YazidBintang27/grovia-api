@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"grovia/internal/dto/requests"
@@ -14,10 +15,10 @@ import (
 )
 
 type LocationService interface {
-	CreateLocation(req requests.LocationRequest, userID int) (*responses.LocationResponse, error)
+	CreateLocation(ctx context.Context, req requests.LocationRequest, userID int) (*responses.LocationResponse, error)
 	GetAllLocation(name, pageStr, limitStr string) ([]responses.LocationResponse, *responses.PaginationMeta, error)
 	GetLocationByID(id int) (*responses.LocationResponse, error)
-	UpdateLocationByID(id, userID int, req requests.LocationRequest) (*responses.LocationResponse, error)
+	UpdateLocationByID(ctx context.Context, id, userID int, req requests.LocationRequest) (*responses.LocationResponse, error)
 	DeleteLocationByID(id, userID int) error
 }
 
@@ -27,7 +28,7 @@ type locationService struct {
 }
 
 // CreateLocation implements LocationService.
-func (l *locationService) CreateLocation(req requests.LocationRequest, userID int) (*responses.LocationResponse, error) {
+func (l *locationService) CreateLocation(ctx context.Context, req requests.LocationRequest, userID int) (*responses.LocationResponse, error) {
 	if strings.TrimSpace(req.Name) == "" {
 		return nil, fmt.Errorf("nama lokasi tidak boleh kosong")
 	}
@@ -36,14 +37,14 @@ func (l *locationService) CreateLocation(req requests.LocationRequest, userID in
 	}
 
 	locationMapping := models.Location{
-		Name:        req.Name,
-		Address:     req.Address,
+		Name:    req.Name,
+		Address: req.Address,
 	}
 
 	var url string
 	var err error
 	if req.Picture != nil {
-		url, err = l.s3.UploadFile(req.Picture, "locations")
+		url, err = l.s3.UploadFile(ctx, req.Picture, "locations")
 		if err != nil {
 			return nil, err
 		}
@@ -60,12 +61,12 @@ func (l *locationService) CreateLocation(req requests.LocationRequest, userID in
 	}
 
 	locationResponse := responses.LocationResponse{
-		ID:          location.ID,
-		Name:        location.Name,
-		Address:     location.Address,
-		Picture:     location.Picture,
-		CreatedAt:   location.CreatedAt,
-		UpdatedAt:   location.UpdatedAt,
+		ID:        location.ID,
+		Name:      location.Name,
+		Address:   location.Address,
+		Picture:   location.Picture,
+		CreatedAt: location.CreatedAt,
+		UpdatedAt: location.UpdatedAt,
 	}
 
 	return &locationResponse, nil
@@ -131,19 +132,19 @@ func (l *locationService) GetLocationByID(id int) (*responses.LocationResponse, 
 	}
 
 	locationResponse := responses.LocationResponse{
-		ID:          location.ID,
-		Name:        location.Name,
-		Address:     location.Address,
-		Picture:     location.Picture,
-		CreatedAt:   location.CreatedAt,
-		UpdatedAt:   location.UpdatedAt,
+		ID:        location.ID,
+		Name:      location.Name,
+		Address:   location.Address,
+		Picture:   location.Picture,
+		CreatedAt: location.CreatedAt,
+		UpdatedAt: location.UpdatedAt,
 	}
 
 	return &locationResponse, nil
 }
 
 // UpdateLocationByID implements LocationService.
-func (l *locationService) UpdateLocationByID(id, userID int, req requests.LocationRequest) (*responses.LocationResponse, error) {
+func (l *locationService) UpdateLocationByID(ctx context.Context, id, userID int, req requests.LocationRequest) (*responses.LocationResponse, error) {
 	if strings.TrimSpace(req.Name) == "" {
 		return nil, errors.New("nama lokasi tidak boleh kosong")
 	}
@@ -155,7 +156,7 @@ func (l *locationService) UpdateLocationByID(id, userID int, req requests.Locati
 	var url string
 	var err error
 	if req.Picture != nil && req.Picture.Filename != "" && req.Picture.Size > 0 {
-		url, err = l.s3.UploadFile(req.Picture, "locations")
+		url, err = l.s3.UploadFile(ctx, req.Picture, "locations")
 		if err != nil {
 			return nil, fmt.Errorf("gagal mengunggah gambar lokasi: %w", err)
 		}
@@ -164,8 +165,8 @@ func (l *locationService) UpdateLocationByID(id, userID int, req requests.Locati
 	log.Println("[DEBUG] Location Picture URL:", url)
 
 	locationMapping := models.Location{
-		Name:        req.Name,
-		Address:     req.Address,
+		Name:    req.Name,
+		Address: req.Address,
 	}
 
 	if url != "" {
@@ -178,12 +179,12 @@ func (l *locationService) UpdateLocationByID(id, userID int, req requests.Locati
 	}
 
 	locationResponse := responses.LocationResponse{
-		ID:          location.ID,
-		Name:        location.Name,
-		Address:     location.Address,
-		Picture:     location.Picture,
-		CreatedAt:   location.CreatedAt,
-		UpdatedAt:   location.UpdatedAt,
+		ID:        location.ID,
+		Name:      location.Name,
+		Address:   location.Address,
+		Picture:   location.Picture,
+		CreatedAt: location.CreatedAt,
+		UpdatedAt: location.UpdatedAt,
 	}
 
 	return &locationResponse, nil

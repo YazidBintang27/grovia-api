@@ -6,6 +6,8 @@ import (
 	"log"
 	"mime/multipart"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"grovia/configs"
@@ -14,6 +16,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
+	"github.com/google/uuid"
 )
 
 type S3Service struct {
@@ -55,34 +59,44 @@ func NewS3Service(cfg configs.AwsConfig) *S3Service {
 	}
 }
 
-func (s *S3Service) UploadFile(file *multipart.FileHeader, folder string) (string, error) {
+func (s *S3Service) UploadFile(ctx context.Context, file *multipart.FileHeader, folder string) (string, error) {
+	const MaxFileSize = 10 << 20
+	if file.Size > MaxFileSize {
+		return "", fmt.Errorf("file too large")
+	}
+
+	allowedExts := map[string]bool{".jpg": true, ".png": true, ".jpeg": true}
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if !allowedExts[ext] {
+		return "", fmt.Errorf("file type not allowed")
+	}
+
 	src, err := file.Open()
 	if err != nil {
 		return "", fmt.Errorf("failed to open file: %w", err)
 	}
 	defer src.Close()
 
-	fileName := fmt.Sprintf("%s/%d_%s", folder, time.Now().Unix(), file.Filename)
+	fileName := fmt.Sprintf("%s/%s%s", folder, uuid.New().String(), ext)
 
-	_, err = s.client.PutObject(context.TODO(), &s3.PutObjectInput{
-		Bucket: aws.String(s.bucketName),
-		Key:    aws.String(fileName),
-		Body:   src,
+	contentType := file.Header.Get("Content-Type")
+
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	_, err = s.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket:      aws.String(s.bucketName),
+		Key:         aws.String(fileName),
+		Body:        src,
+		ContentType: aws.String(contentType),
+		ACL:         types.ObjectCannedACLPrivate,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to upload to S3: %w", err)
 	}
 
-	presignClient := s3.NewPresignClient(s.client)
-	presignedReq, err := presignClient.PresignGetObject(context.TODO(), &s3.GetObjectInput{
-		Bucket: aws.String(s.bucketName),
-		Key:    aws.String(fileName),
-	}, func(opts *s3.PresignOptions) {
-		opts.Expires = time.Hour * 24 * 7 
-	})
-	if err != nil {
-		return "", fmt.Errorf("failed to generate presigned URL: %w", err)
-	}
+	fileURL := fmt.Sprintf("https://%s.s3.%s.amazonaws.com/%s",
+		s.bucketName, s.region, fileName)
 
-	return presignedReq.URL, nil
+	return fileURL, nil
 }
