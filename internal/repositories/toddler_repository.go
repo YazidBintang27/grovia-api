@@ -14,7 +14,6 @@ type ToddlerRepository interface {
 	GetToddlerByID(id, locationID int) (*models.Toddler, error)
 	UpdateToddlerByID(id, locationID int, toddler *models.Toddler) (*models.Toddler, error)
 	DeleteToddlerByID(id, locationID, userID int) error
-	FindParentIDByID(id, locationID int) (*int, error)
 	FindToddlerByName(parentID int, name string) (bool, *models.Toddler, error)
 	GetAllToddlerAllLocation(name string, limit, offset int) ([]models.Toddler, int, error)
 }
@@ -89,38 +88,12 @@ func (t *toddlerRepository) CreateToddler(toddler *models.Toddler) (*models.Todd
 	return toddler, nil
 }
 
-// FindParentIDByID implements ToddlerRepository.
-func (t *toddlerRepository) FindParentIDByID(id int, locationID int) (*int, error) {
-	var parentID int
-	if locationID == 1 {
-		if err := t.db.Model(&models.Toddler{}).
-			Select("parent_id").
-			Where("id = ?", id).
-			Take(&parentID).Error; err != nil {
-			return nil, err
-		}
-	} else {
-		if err := t.db.Model(&models.Toddler{}).
-			Select("parent_id").
-			Where("id = ? AND location_id = ?", id, locationID).
-			Take(&parentID).Error; err != nil {
-			return nil, err
-		}
-	}
-	return &parentID, nil
-}
-
 // DeleteToddlerByID implements ToddlerRepository.
 func (t *toddlerRepository) DeleteToddlerByID(id int, locationID, userID int) error {
-	parentID, err := t.FindParentIDByID(id, locationID)
-	if err != nil {
-		return err
-	}
-
 	db := t.db.Model(&models.Toddler{})
 
 	if locationID == 1 {
-		res := db.Where("id = ? AND parent_id = ?", id, parentID).Updates(map[string]any{
+		res := db.Where("id = ?", id).Updates(map[string]any{
 			"deleted_by_id": userID,
 			"deleted_at":    gorm.Expr("NOW()"),
 		})
@@ -131,7 +104,7 @@ func (t *toddlerRepository) DeleteToddlerByID(id int, locationID, userID int) er
 			return gorm.ErrRecordNotFound
 		}
 	} else {
-		res := db.Where("id = ? AND location_id = ? AND parent_id = ?", id, locationID, parentID).Updates(map[string]any{
+		res := db.Where("id = ? AND location_id = ?", id, locationID).Updates(map[string]any{
 			"deleted_by_id": userID,
 			"deleted_at":    gorm.Expr("NOW()"),
 		})
@@ -179,32 +152,16 @@ func (t *toddlerRepository) GetAllToddler(locationID, limit, offset int, name st
 
 // GetToddlerByID implements ToddlerRepository.
 func (t *toddlerRepository) GetToddlerByID(id int, locationID int) (*models.Toddler, error) {
-
-	parentID, err := t.FindParentIDByID(id, locationID)
-	if err != nil {
-		return nil, err
-	}
-
 	var toddler models.Toddler
 
-	if locationID == 1 {
-		tx := t.db.Where("id = ? AND parent_id = ?", id, parentID).Find(&toddler)
+	db := t.db.Where("id = ? AND deleted_at IS NULL", id)
 
-		if tx.Error != nil {
-			return nil, tx.Error
-		}
-		if tx.RowsAffected == 0 {
-			return nil, gorm.ErrRecordNotFound
-		}
-	} else {
-		tx := t.db.Where("id = ? AND location_id = ? AND parent_id = ?", id, locationID, parentID).Find(&toddler)
+	if locationID != 1 {
+		db = db.Where("location_id = ?", locationID)
+	}
 
-		if tx.Error != nil {
-			return nil, tx.Error
-		}
-		if tx.RowsAffected == 0 {
-			return nil, gorm.ErrRecordNotFound
-		}
+	if err := db.First(&toddler).Error; err != nil {
+		return nil, err
 	}
 
 	return &toddler, nil
@@ -212,52 +169,29 @@ func (t *toddlerRepository) GetToddlerByID(id int, locationID int) (*models.Todd
 
 // UpdateToddlerByID implements ToddlerRepository.
 func (t *toddlerRepository) UpdateToddlerByID(id int, locationID int, toddler *models.Toddler) (*models.Toddler, error) {
+	db := t.db.Model(toddler).Where("id = ? AND deleted_at IS NULL", id)
 
-	parentID, err := t.FindParentIDByID(id, locationID)
-	if err != nil {
+	if locationID != 1 {
+		db = db.Where("location_id = ?", locationID)
+	}
+
+	if err := db.Updates(toddler).Error; err != nil {
 		return nil, err
 	}
 
-	if locationID == 1 {
-		tx := t.db.Model(toddler).Where("id = ? AND parent_id = ?", id, parentID).Updates(toddler)
-
-		if tx.Error != nil {
-			return nil, tx.Error
-		}
-		if tx.RowsAffected == 0 {
-			return nil, gorm.ErrRecordNotFound
-		}
-	} else {
-		tx := t.db.Model(toddler).Where("id = ? AND location_id = ? AND parent_id = ?", id, locationID, parentID).Updates(toddler)
-
-		if tx.Error != nil {
-			return nil, tx.Error
-		}
-		if tx.RowsAffected == 0 {
-			return nil, gorm.ErrRecordNotFound
-		}
+	if db.RowsAffected == 0 {
+		return nil, gorm.ErrRecordNotFound
 	}
 
 	var toddlerResponse models.Toddler
+	dbFetch := t.db.Where("id = ?", id)
 
-	if locationID == 1 {
-		tx := t.db.Where("id = ?", id).First(&toddlerResponse)
+	if locationID != 1 {
+		dbFetch = dbFetch.Where("location_id = ?", locationID)
+	}
 
-		if tx.Error != nil {
-			return nil, tx.Error
-		}
-		if tx.RowsAffected == 0 {
-			return nil, gorm.ErrRecordNotFound
-		}
-	} else {
-		tx := t.db.Where("id = ? AND location_id = ?", id, locationID).First(&toddlerResponse)
-
-		if tx.Error != nil {
-			return nil, tx.Error
-		}
-		if tx.RowsAffected == 0 {
-			return nil, gorm.ErrRecordNotFound
-		}
+	if err := dbFetch.First(&toddlerResponse).Error; err != nil {
+		return nil, err
 	}
 
 	return &toddlerResponse, nil
