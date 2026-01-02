@@ -11,7 +11,7 @@
  - #### Request Body: 
  ```json
  {
-    "phone_number": "08771265393",
+    "phoneNumber": "08771265393",
     "password": "passwordexample33"
  }
  ```
@@ -23,7 +23,6 @@
     "success": true,
     "message": "Login Success",
     "data": {
-      "phoneNumber": "08771265393",
       "token": {
          "accessToken": "wou8h2yr8038e2940uq0jp",
          "refreshToken": "wou8h2yr8038e2940uq0jp"
@@ -224,3 +223,384 @@
     }
  }
  ```
+
+ ## GET api/users
+
+### Request
+ - #### Method: `GET`
+ - #### Header: `Bearer <token>`
+ - #### Content-type: `application/json`
+ - #### Endpoint: `/users`
+
+### Response
+ - #### Status: `200 OK`
+ - #### Body: 
+ ```json
+ {
+    "success": true,
+    "message": "Get user Success",
+    "data": [
+      {
+         "name": "yazid",
+         "phoneNumber": "087712354798",
+         "address": "Ds. Pangadegan RT 002 RW 003",
+         "nik": "3603312711040004",
+         "profilePicture": "https://storage.googleapis.com/tesdemas/users/dR9RzwI2hrVE4DdXmZKkg.png",
+         "role": "Kepala Posyandu",
+         "createdBy": "Admin",
+         "createdAt": "2025-08-03T00:00:00Z",
+         "updatedAt": "2025-08-03T00:00:00Z"
+      },
+      {
+         "name": "yazid",
+         "phoneNumber": "087712354798",
+         "address": "Ds. Pangadegan RT 002 RW 003",
+         "nik": "3603312711040004",
+         "profilePicture": "https://storage.googleapis.com/tesdemas/users/dR9RzwI2hrVE4DdXmZKkg.png",
+         "role": "Kepala Posyandu",
+         "createdBy": "Admin",
+         "createdAt": "2025-08-03T00:00:00Z",
+         "updatedAt": "2025-08-03T00:00:00Z"
+      }
+    ],
+    "error": null
+ }
+ ```
+
+ - #### Status: `401 Unauthorized`
+ - #### Body: 
+ ```json
+ {
+    "success": false,
+    "message": "Get user Failed",
+    "data": null,
+    "error": {
+      "code": "UNAUTHORIZED",
+      "message": "Invalid Token"
+    }
+ }
+ ```
+
+  ## GET api/users/:id
+
+### Request
+ - #### Method: `GET`
+ - #### Header: `Bearer <token>`
+ - #### Content-type: `application/json`
+ - #### Endpoint: `/users/:id`
+
+### Response
+ - #### Status: `200 OK`
+ - #### Body: 
+ ```json
+ {
+    "success": true,
+    "message": "Get user Success",
+    "data": {
+      "name": "yazid",
+      "phoneNumber": "087712354798",
+      "address": "Ds. Pangadegan RT 002 RW 003",
+      "nik": "3603312711040004",
+      "profilePicture": "https://storage.googleapis.com/tesdemas/users/dR9RzwI2hrVE4DdXmZKkg.png",
+      "role": "Kepala Posyandu",
+      "createdBy": "Admin",
+      "createdAt": "2025-08-03T00:00:00Z",
+      "updatedAt": "2025-08-03T00:00:00Z"
+    }
+    "error": null
+ }
+ ```
+
+ - #### Status: `401 Unauthorized`
+ - #### Body: 
+ ```json
+ {
+    "success": false,
+    "message": "Get user Failed",
+    "data": null,
+    "error": {
+      "code": "UNAUTHORIZED",
+      "message": "Invalid Token"
+    }
+ }
+ ```
+
+  ## POST api/users
+
+### Request
+ - #### Method: `POST`
+ - #### Header: `Bearer <token>`
+ - #### Content-type: `application/json`
+ - #### Endpoint: `/users`
+ - #### Body:
+
+ ```json
+ {
+   "name": "yazid",
+   "phoneNumber": "087712354798",
+   "address": "Ds. Pangadegan RT 002 RW 003",
+   "nik": "3603312711040004",
+   "profilePicture": "https://storage.googleapis.com/tesdemas/users/dR9RzwI2hrVE4DdXmZKkg.png",
+   "role": "Kepala Posyandu"
+ }
+ ```
+
+### Response
+ - #### Status: `200 OK`
+ - #### Body: 
+ ```json
+ {
+    "success": true,
+    "message": "Create user Success",
+    "data": {
+      "name": "yazid",
+      "phoneNumber": "087712354798",
+      "address": "Ds. Pangadegan RT 002 RW 003",
+      "nik": "3603312711040004",
+      "profilePicture": "https://storage.googleapis.com/tesdemas/users/dR9RzwI2hrVE4DdXmZKkg.png",
+      "role": "Kepala Posyandu",
+      "createdBy": "Admin",
+      "createdAt": "2025-08-03T00:00:00Z",
+      "updatedAt": "2025-08-03T00:00:00Z"
+    },
+    "error": null
+ }
+ ```
+
+ - #### Status: `401 Unauthorized`
+ - #### Body: 
+ ```json
+ {
+    "success": false,
+    "message": "Create user Failed",
+    "data": null,
+    "error": {
+      "code": "UNAUTHORIZED",
+      "message": "Invalid Token"
+    }
+ }
+ ```
+
+ ## PUT api/users/:id
+
+### Request
+ - #### Method: `PUT`
+ - #### Header: `Bearer <token>`
+ - #### Content-type: `application/json`
+ - #### Endpoint: `/users/:id`
+ - #### Body: 
+
+ ```json
+ {
+   "name": "yazid",
+   "phoneNumber": "087712354798",
+   "address": "Ds. Pangadegan RT 002 RW 003",
+   "nik": "3603312711040004",
+   "profilePicture": "https://storage.googleapis.com/tesdemas/users/dR9RzwI2hrVE4DdXmZKkg.png",
+ }
+ ```
+
+### Response
+ - #### Status: `200 OK`
+ - #### Body: 
+ ```json
+ {
+    "success": true,
+    "message": "Get user Success",
+    "data": {
+      "name": "yazid",
+      "phoneNumber": "087712354798",
+      "address": "Ds. Pangadegan RT 002 RW 003",
+      "nik": "3603312711040004",
+      "profilePicture": "https://storage.googleapis.com/tesdemas/users/dR9RzwI2hrVE4DdXmZKkg.png",
+      "role": "Kepala Posyandu",
+      "createdBy": "Admin",
+      "createdAt": "2025-08-03T00:00:00Z",
+      "updatedAt": "2025-08-03T00:00:00Z"
+    },
+    "error": null
+ }
+ ```
+
+ - #### Status: `401 Unauthorized`
+ - #### Body: 
+ ```json
+ {
+    "success": false,
+    "message": "Get user Failed",
+    "data": null,
+    "error": {
+      "code": "UNAUTHORIZED",
+      "message": "Invalid Token"
+    }
+ }
+ ```
+
+ ## DELETE api/users/:id
+
+### Request
+ - #### Method: `DELETE`
+ - #### Header: `Bearer <token>`
+ - #### Content-type: `application/json`
+ - #### Endpoint: `/users/:id`
+
+### Response
+ - #### Status: `200 OK`
+ - #### Body: 
+ ```json
+ {
+    "success": true,
+    "message": "Delete user Success",
+    "error": null
+ }
+ ```
+
+ - #### Status: `401 Unauthorized`
+ - #### Body: 
+ ```json
+ {
+    "success": false,
+    "message": "Delete user Failed",
+    "data": null,
+    "error": {
+      "code": "UNAUTHORIZED",
+      "message": "Invalid Token"
+    }
+ }
+ ```
+
+ # Parent
+
+ ## POST api/parents
+
+### Request
+ - #### Method: `POST`
+ - #### Header: `Bearer <token>`
+ - #### Content-type: `application/json`
+ - #### Endpoint: `/parents`
+ - #### Body:
+
+ ```json
+ {
+   "name": "yazid",
+   "phoneNumber": "087712354798",
+   "address": "Ds. Pangadegan RT 002 RW 003",
+   "nik": "3603312711040004",
+   "job": "Pengusaha"
+ }
+ ```
+
+### Response
+ - #### Status: `200 OK`
+ - #### Body: 
+ ```json
+ {
+    "success": true,
+    "message": "Create parent data Success",
+    "data": {
+      "name": "yazid",
+      "phoneNumber": "087712354798",
+      "address": "Ds. Pangadegan RT 002 RW 003",
+      "nik": "3603312711040004",
+      "job": "Pengusaha",
+      "createdAt": "2025-08-03T00:00:00Z",
+      "updatedAt": "2025-08-03T00:00:00Z"
+    },
+    "error": null
+ }
+ ```
+
+ - #### Status: `401 Unauthorized`
+ - #### Body: 
+ ```json
+ {
+    "success": false,
+    "message": "Create parent data Failed",
+    "data": null,
+    "error": {
+      "code": "UNAUTHORIZED",
+      "message": "Invalid Token"
+    }
+ }
+ ```
+
+ ## GET api/parents
+
+ ### Request
+ - #### Method: `GET`
+ - #### Header: `Bearer <token>`
+ - #### Content-type: `application/json`
+ - #### Endpoint: `/parents`
+
+### Response
+ - #### Status: `200 OK`
+ - #### Body: 
+ ```json
+ {
+    "success": true,
+    "message": "Get parent data Success",
+    "data": [
+      {
+         "id": 1,
+         "name": "yazid",
+         "phoneNumber": "087712354798",
+         "address": "Ds. Pangadegan RT 002 RW 003",
+         "nik": "3603312711040004",
+         "job": "Pengusaha",
+         "createdAt": "2025-08-03T00:00:00Z",
+         "updatedAt": "2025-08-03T00:00:00Z"
+      },
+      {
+         "id": 2,
+         "name": "yazid",
+         "phoneNumber": "087712354798",
+         "address": "Ds. Pangadegan RT 002 RW 003",
+         "nik": "3603312711040004",
+         "job": "Pengusaha",
+         "createdAt": "2025-08-03T00:00:00Z",
+         "updatedAt": "2025-08-03T00:00:00Z"
+      }
+    ],
+    "error": null
+ }
+ ```
+
+ - #### Status: `401 Unauthorized`
+ - #### Body: 
+ ```json
+ {
+    "success": false,
+    "message": "Get parent data Failed",
+    "data": null,
+    "error": {
+      "code": "UNAUTHORIZED",
+      "message": "Invalid Token"
+    }
+ }
+ ```
+
+ ## GET api/parents/:id
+
+ ## PUT api/parents/:id
+
+ ## DELETE api/parents/:id
+
+
+```json
+{
+   "success": true,
+   "message": "Predict Success",
+   "data": {
+      "id": 1,
+      "toddler_id": 1,
+      "height": 94.5,
+      "age": 30,
+      "sex": "Male",
+      "zscore": 24.5,
+      "nutrional_status": "Severely Stunted",
+      "created_at": "2025-08-03T00:00:00Z",
+      "updated_at": "2025-08-03T00:00:00Z"
+   },
+   "error": null
+}
+```

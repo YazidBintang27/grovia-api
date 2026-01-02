@@ -11,23 +11,25 @@ import (
 var jwtKey = []byte(os.Getenv("JWT_SECRET"))
 
 type JWTClaim struct {
-	UserID int    `json:"user_id"`
-	Role   string `json:"role"`
+	UserID     int    `json:"user_id"`
+	LocationID int    `json:"location_id"`
+	Role       string `json:"role"`
 	jwt.RegisteredClaims
 }
 
-func GenerateJWT(userID int, role string) (accessToken, refreshToken string, err error) {
+func GenerateJWT(userID, locationID int, role string) (accessToken, refreshToken string, err error) {
 	accessClaims := &JWTClaim{
-		UserID: userID,
-		Role: role,
+		UserID:     userID,
+		Role:       role,
+		LocationID: locationID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-			Issuer: "grovia-api",
-			IssuedAt: jwt.NewNumericDate(time.Now()),
+			Issuer:    "grovia-api",
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
 
-	at := jwt.NewWithClaims(jwt.SigningMethodES256, accessClaims)
+	at := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
 	accessToken, err = at.SignedString(jwtKey)
 
 	if err != nil {
@@ -35,16 +37,17 @@ func GenerateJWT(userID int, role string) (accessToken, refreshToken string, err
 	}
 
 	refreshClaims := &JWTClaim{
-		UserID: userID,
-		Role: role,
+		UserID:     userID,
+		Role:       role,
+		LocationID: locationID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(7 * 24 * time.Hour)),
-			Issuer: "grovia-api",
-			IssuedAt: jwt.NewNumericDate(time.Now()),
+			Issuer:    "grovia-api",
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
 
-	rt := jwt.NewWithClaims(jwt.SigningMethodES256, refreshClaims)
+	rt := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
 	refreshToken, err = rt.SignedString(jwtKey)
 
 	if err != nil {
