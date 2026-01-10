@@ -4,6 +4,7 @@ import (
 	"grovia/internal/dto/requests"
 	"grovia/internal/dto/responses"
 	"grovia/internal/services"
+	"grovia/pkg"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -62,7 +63,7 @@ func (a *AuthHandler) Login(ctx *fiber.Ctx) error {
 			Data:    nil,
 			Error: responses.ErrorResponse{
 				Code:    "INVALID_REQUEST",
-				Message: "Invalid Request",
+				Message: err.Error(),
 			},
 		})
 	}
@@ -70,15 +71,7 @@ func (a *AuthHandler) Login(ctx *fiber.Ctx) error {
 	token, err := a.service.Login(req)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Invalid Request",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INVALID_REQUEST",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	loginResponse := responses.LoginResponse{
@@ -113,15 +106,7 @@ func (a *AuthHandler) RefreshToken(ctx *fiber.Ctx) error {
 	token, err := a.service.RefreshToken(req.RefreshToken)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusUnauthorized).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Invalid Token",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INVALID_TOKEN",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	tokenResponse := responses.LoginResponse{

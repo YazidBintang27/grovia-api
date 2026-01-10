@@ -4,6 +4,7 @@ import (
 	"grovia/internal/dto/requests"
 	"grovia/internal/dto/responses"
 	"grovia/internal/services"
+	"grovia/pkg"
 	"strconv"
 	"time"
 
@@ -51,15 +52,7 @@ func (t *ToddlerHandler) CreateToddler(ctx *fiber.Ctx) error {
 
 	toddlerResp, predictResponse, err := t.service.CreateToddler(req, userID)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusCreated).JSON(responses.BaseResponse{
@@ -108,15 +101,7 @@ func (t *ToddlerHandler) CreateToddlerWithParent(ctx *fiber.Ctx) error {
 
 	toddlerResponse, parentResp, predictResponse, err := t.service.CreateToddlerWithParent(req.Toddler, req.Parent, userID)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusCreated).JSON(responses.BaseResponse{
@@ -153,15 +138,7 @@ func (t *ToddlerHandler) GetAllToddler(ctx *fiber.Ctx) error {
 	toddlers, meta, err := t.service.GetAllToddler(locationID, name, pageStr, limitStr)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -207,15 +184,7 @@ func (t *ToddlerHandler) GetToddlerByID(ctx *fiber.Ctx) error {
 	toddler, err := t.service.GetToddlerByID(id, locationID)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -295,15 +264,7 @@ func (t *ToddlerHandler) UpdateToddlerByID(ctx *fiber.Ctx) error {
 	toddlerResponse, predictResponse, err := t.service.UpdateToddlerByID(ctx.Context(), id, locationID, userID, req)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -386,15 +347,7 @@ func (t *ToddlerHandler) UpdateToddlerByIDWithoutPredict(ctx *fiber.Ctx) error {
 	toddlerResponse, err := t.service.UpdateToddlerByIDWithoutPredict(ctx.Context(), id, locationID, userID, req)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -439,15 +392,7 @@ func (t *ToddlerHandler) DeleteToddlerByID(ctx *fiber.Ctx) error {
 	err = t.service.DeleteToddlerByID(id, locationID, userID)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -490,15 +435,7 @@ func (t *ToddlerHandler) CheckToddlerExists(ctx *fiber.Ctx) error {
 
 	exists, toddler, err := t.service.CheckToddlerExists(phoneNumber, name)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -538,15 +475,7 @@ func (t *ToddlerHandler) GetAllToddlerAllLocation(ctx *fiber.Ctx) error {
 	toddlerResponses, meta, err := t.service.GetAllToddlerAllLocation(name, pageStr, limitStr)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{

@@ -2,17 +2,13 @@ package services
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"grovia/internal/dto/requests"
 	"grovia/internal/dto/responses"
 	"grovia/internal/models"
 	"grovia/internal/repositories"
 	"grovia/pkg"
 	"math"
-	"regexp"
 	"strconv"
-	"strings"
 )
 
 type UserService interface {
@@ -36,21 +32,21 @@ func (u *userService) GetUserById(targetUserID int, accesorRole string) (*respon
 	targetRole, err := u.repo.FindRoleById(targetUserID)
 
 	if err != nil {
-		return nil, err
+		return nil, pkg.NewNotFoundError("User tidak ditemukan")
 	}
 
 	if targetRole == "" {
-		return nil, err
+		return nil, pkg.NewNotFoundError("User tidak ditemukan")
 	}
 
 	if !u.rolePermission(accesorRole, targetRole) {
-		return nil, fmt.Errorf("%s tidak boleh mengakses role %s ", accesorRole, targetRole)
+		return nil, pkg.NewForbiddenError("Tidak memiliki akses untuk melihat user dengan role " + targetRole)
 	}
 
 	user, err := u.repo.GetUser(targetUserID)
 
 	if err != nil {
-		return nil, err
+		return nil, pkg.NewNotFoundError("User tidak ditemukan")
 	}
 
 	response := &responses.UserResponse{
@@ -83,7 +79,7 @@ func (u *userService) GetUsersByRole(requesterRole, name, pageStr, limitStr stri
 	case pkg.RoleKepalaPosyandu:
 		roles = []string{pkg.RoleKader}
 	default:
-		return nil, nil, errors.New("forbidden: role not allowed")
+		return nil, nil, pkg.NewForbiddenError("Role tidak diizinkan")
 	}
 
 	if page < 1 {
@@ -98,7 +94,7 @@ func (u *userService) GetUsersByRole(requesterRole, name, pageStr, limitStr stri
 
 	users, total, err := u.repo.FindUsersByRole(roles, name, locationID, limit, offset)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, pkg.NewNotFoundError("User tidak ditemukan")
 	}
 
 	totalPage := int(math.Ceil(float64(total) / float64(limit)))
@@ -136,11 +132,11 @@ func (u *userService) DeleteUserByID(targetUserID int, updaterRole string) error
 	targetRole, err := u.repo.FindRoleById(targetUserID)
 
 	if err != nil {
-		return err
+		return pkg.NewNotFoundError("User tidak ditemukan")
 	}
 
 	if !u.rolePermission(updaterRole, targetRole) {
-		return fmt.Errorf("%s tidak boleh menghapus role ke %s", updaterRole, targetRole)
+		return pkg.NewForbiddenError("Tidak memiliki akses menghapus user dengan Role %s" + targetRole)
 	}
 
 	return u.repo.DeleteUser(targetUserID)
@@ -150,24 +146,11 @@ func (u *userService) DeleteUserByID(targetUserID int, updaterRole string) error
 func (u *userService) CreateUser(ctx context.Context, req requests.CreateUserRequest, createdBy string, locationID int) (*responses.UserResponse, error) {
 
 	if !u.rolePermission(createdBy, req.Role) {
-		return nil, fmt.Errorf("role %s tidak diizinkan membuat user dengan role %s", createdBy, req.Role)
+		return nil, pkg.NewForbiddenError("Tidak memiliki akses membuat user dengan Role %s" + req.Role)
 	}
 
-	if strings.TrimSpace(req.Name) == "" ||
-		strings.TrimSpace(req.PhoneNumber) == "" ||
-		strings.TrimSpace(req.Address) == "" ||
-		strings.TrimSpace(req.Nik) == "" ||
-		strings.TrimSpace(req.Role) == "" ||
-		strings.TrimSpace(req.Password) == "" {
-		return nil, fmt.Errorf("semua field (name, phone_number, address, nik, role, password) wajib diisi")
-	}
-
-	if len(req.PhoneNumber) < 10 || len(req.PhoneNumber) > 15 {
-		return nil, fmt.Errorf("nomor telepon harus memiliki panjang antara 10 sampai 15 digit")
-	}
-
-	if len(req.Nik) != 16 {
-		return nil, fmt.Errorf("NIK harus memiliki tepat 16 digit")
+	if err := pkg.ValidateStruct(req); err != nil {
+		return nil, pkg.NewBadRequestError(err.Error())
 	}
 
 	var url string
@@ -176,26 +159,26 @@ func (u *userService) CreateUser(ctx context.Context, req requests.CreateUserReq
 	if req.ProfilePicture != nil && req.ProfilePicture.Filename != "" && req.ProfilePicture.Size > 0 {
 		url, err = u.s3.UploadFile(ctx, req.ProfilePicture, "users")
 		if err != nil {
-			return nil, fmt.Errorf("gagal upload foto profil: %v", err)
+			return nil, pkg.NewInternalServerError("Gagal upload foto profil")
 		}
 	}
 
 	hashedPassword, err := pkg.HashPassword(req.Password)
 
 	if err != nil {
-		return nil, err
+		return nil, pkg.NewInternalServerError("Gagal memproses password")
 	}
 
 	var location int
 
 	if createdBy == "admin" {
 		if req.LocationID == 0 {
-			return nil, fmt.Errorf("admin harus menyertakan location_id")
+			return nil, pkg.NewBadRequestError("Admin harus menyertakan location ID")
 		}
 		location = req.LocationID
 	} else {
 		if locationID == 0 {
-			return nil, fmt.Errorf("location_id tidak ditemukan di JWT")
+			return nil, pkg.NewBadRequestError("Location ID tidak ditemukan")
 		}
 		location = locationID
 	}
@@ -216,7 +199,7 @@ func (u *userService) CreateUser(ctx context.Context, req requests.CreateUserReq
 	user, err := u.repo.CreateUser(&userMapping)
 
 	if err != nil {
-		return nil, err
+		return nil, pkg.NewInternalServerError("Gagal membuat user")
 	}
 
 	response := responses.UserResponse{
@@ -239,7 +222,10 @@ func (u *userService) CreateUser(ctx context.Context, req requests.CreateUserReq
 
 // DeleteUser implements UserService.
 func (u *userService) DeleteCurrentUser(id int) error {
-	return u.repo.DeleteUser(id)
+	if err := u.repo.DeleteUser(id); err != nil {
+		return pkg.NewInternalServerError("Gagal menghapus user")
+	}
+	return nil
 }
 
 // GetUser implements UserService.
@@ -247,7 +233,7 @@ func (u *userService) GetCurrentUser(id int) (*responses.UserResponse, error) {
 	user, err := u.repo.GetUser(id)
 
 	if err != nil {
-		return nil, err
+		return nil, pkg.NewNotFoundError("User tidak ditemukan")
 	}
 
 	response := &responses.UserResponse{
@@ -270,21 +256,8 @@ func (u *userService) GetCurrentUser(id int) (*responses.UserResponse, error) {
 
 // UpdateCurrentUser implements UserService.
 func (u *userService) UpdateCurrentUser(ctx context.Context, id int, req requests.UpdateUserRequest) (*responses.UserResponse, error) {
-	if req.PhoneNumber != nil {
-		phone := strings.TrimSpace(*req.PhoneNumber)
-		if phone != "" {
-			if len(phone) < 10 || len(phone) > 15 {
-				return nil, errors.New("nomor telepon harus antara 10–15 digit")
-			}
-		}
-	}
-	if req.Nik != nil {
-		nik := strings.TrimSpace(*req.Nik)
-		if nik != "" {
-			if len(nik) != 16 {
-				return nil, errors.New("nik harus 16 digit")
-			}
-		}
+	if err := pkg.ValidateStruct(req); err != nil {
+		return nil, pkg.NewBadRequestError(err.Error())
 	}
 
 	var url string
@@ -293,7 +266,7 @@ func (u *userService) UpdateCurrentUser(ctx context.Context, id int, req request
 	if req.ProfilePicture != nil && req.ProfilePicture.Filename != "" && req.ProfilePicture.Size > 0 {
 		url, err = u.s3.UploadFile(ctx, req.ProfilePicture, "users")
 		if err != nil {
-			return nil, fmt.Errorf("gagal upload foto profil: %v", err)
+			return nil, pkg.NewInternalServerError("Gagal upload foto profil")
 		}
 	}
 
@@ -314,19 +287,16 @@ func (u *userService) UpdateCurrentUser(ctx context.Context, id int, req request
 		userMapping.ProfilePicture = url
 	}
 	if req.Password != nil {
-		if len(*req.Password) < 6 {
-			return nil, errors.New("password minimal 6 karakter")
-		}
 		hashedPassword, err := pkg.HashPassword(*req.Password)
 		if err != nil {
-			return nil, fmt.Errorf("gagal meng-hash password: %v", err)
+			return nil, pkg.NewInternalServerError("Gagal memproses password")
 		}
 		userMapping.Password = hashedPassword
 	}
 
 	user, err := u.repo.UpdateUser(id, &userMapping)
 	if err != nil {
-		return nil, err
+		return nil, pkg.NewInternalServerError("Gagal update user")
 	}
 
 	return &responses.UserResponse{
@@ -352,27 +322,8 @@ func (u *userService) UpdateUserByID(
 	updaterRole string,
 ) (*responses.UserResponse, error) {
 
-	if req.PhoneNumber != nil {
-		phone := strings.TrimSpace(*req.PhoneNumber)
-		if phone != "" {
-			if len(phone) < 10 || len(phone) > 15 {
-				return nil, errors.New("nomor telepon harus antara 10–15 digit")
-			}
-			if !regexp.MustCompile(`^[0-9]+$`).MatchString(phone) {
-				return nil, errors.New("nomor telepon hanya boleh berisi angka")
-			}
-		}
-	}
-	if req.Nik != nil {
-		nik := strings.TrimSpace(*req.Nik)
-		if nik != "" {
-			if len(nik) != 16 {
-				return nil, errors.New("nik harus 16 digit")
-			}
-			if !regexp.MustCompile(`^[0-9]+$`).MatchString(nik) {
-				return nil, errors.New("nik hanya boleh berisi angka")
-			}
-		}
+	if err := pkg.ValidateStruct(req); err != nil {
+		return nil, pkg.NewBadRequestError(err.Error())
 	}
 
 	if req.Role != nil {
@@ -381,7 +332,7 @@ func (u *userService) UpdateUserByID(
 			return nil, err
 		}
 		if !u.rolePermission(updaterRole, role) {
-			return nil, fmt.Errorf("%s tidak boleh mengubah role ke %s", updaterRole, *req.Role)
+			return nil, pkg.NewForbiddenError("Tidak memiliki akses update user dengan Role %s" + role)
 		}
 	}
 
@@ -391,7 +342,7 @@ func (u *userService) UpdateUserByID(
 	if req.ProfilePicture != nil && req.ProfilePicture.Filename != "" && req.ProfilePicture.Size > 0 {
 		url, err = u.s3.UploadFile(ctx, req.ProfilePicture, "users")
 		if err != nil {
-			return nil, fmt.Errorf("gagal upload foto profil: %v", err)
+			return nil, pkg.NewInternalServerError("Gagal upload foto profil")
 		}
 	}
 
@@ -418,19 +369,16 @@ func (u *userService) UpdateUserByID(
 		userMapping.ProfilePicture = url
 	}
 	if req.Password != nil {
-		if len(*req.Password) < 6 {
-			return nil, errors.New("password minimal 6 karakter")
-		}
 		hashedPassword, err := pkg.HashPassword(*req.Password)
 		if err != nil {
-			return nil, fmt.Errorf("gagal meng-hash password: %v", err)
+			return nil, pkg.NewInternalServerError("Gagal memproses password")
 		}
 		userMapping.Password = hashedPassword
 	}
 
 	user, err := u.repo.UpdateUser(targetUserID, &userMapping)
 	if err != nil {
-		return nil, err
+		return nil, pkg.NewInternalServerError("Gagal update user")
 	}
 
 	return &responses.UserResponse{

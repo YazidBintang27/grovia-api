@@ -1,15 +1,15 @@
 package requests
 
 type LoginRequest struct {
-	PhoneNumber string `json:"phoneNumber" binding:"required"`
-	Password    string `json:"password" binding:"required"`
+	PhoneNumber string `json:"phoneNumber" validate:"required,phone"`
+	Password    string `json:"password" validate:"required,min=6"`
 }
 
 type ResetPasswordRequest struct {
 	FirebaseToken   string `json:"firebaseToken"`
-	PhoneNumber     string `json:"phoneNumber"`
-	Password        string `json:"password"`
-	ConfirmPassword string `json:"confirmPassword"`
+	PhoneNumber     string `json:"phoneNumber" validate:"required,phone"`
+	Password        string `json:"password" validate:"required,min=6"`
+	ConfirmPassword string `json:"confirmPassword" validate:"required,min=6"`
 }
 
 type RefreshTokenRequest struct {

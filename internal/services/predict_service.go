@@ -3,11 +3,11 @@ package services
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"grovia/internal/dto/requests"
 	"grovia/internal/dto/responses"
 	"grovia/internal/models"
 	"grovia/internal/repositories"
+	"grovia/pkg"
 	"io"
 	"math"
 	"mime/multipart"
@@ -34,7 +34,6 @@ type predictService struct {
 	mlAPIURL string
 }
 
-// GetAllPredictAllLocation implements PredictService.
 func (p *predictService) GetAllPredictAllLocation(pageStr, limitStr string) ([]responses.PredictResponse, *responses.PaginationMeta, error) {
 	page, _ := strconv.Atoi(pageStr)
 	limit, _ := strconv.Atoi(limitStr)
@@ -52,7 +51,7 @@ func (p *predictService) GetAllPredictAllLocation(pageStr, limitStr string) ([]r
 	predicts, total, err := p.repo.GetAllPredictAllLocation(limit, offset)
 
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, pkg.NewInternalServerError("Gagal mengambil data prediksi")
 	}
 
 	totalPage := int(math.Ceil(float64(total) / float64(limit)))
@@ -84,55 +83,56 @@ func (p *predictService) GetAllPredictAllLocation(pageStr, limitStr string) ([]r
 	return predictResponses, &meta, nil
 }
 
-// CreateGroupPredict implements PredictService.
 func (p *predictService) CreateGroupPredict(filePath string) ([]byte, error) {
 	payload := &bytes.Buffer{}
 	writer := multipart.NewWriter(payload)
 
 	fileWriter, err := writer.CreateFormFile("file", filepath.Base(filePath))
 	if err != nil {
-		return nil, err
+		return nil, pkg.NewInternalServerError("Gagal membuat form file")
 	}
 
 	file, err := os.Open(filePath)
 	if err != nil {
-		return nil, err
+		return nil, pkg.NewInternalServerError("Gagal membuka file")
 	}
 	defer file.Close()
 
 	_, err = io.Copy(fileWriter, file)
 	if err != nil {
-		return nil, err
+		return nil, pkg.NewInternalServerError("Gagal menyalin file")
 	}
 	writer.Close()
 
 	req, err := http.NewRequest("POST", p.mlAPIURL+"/predict-group", payload)
 	if err != nil {
-		return nil, err
+		return nil, pkg.NewInternalServerError("Gagal membuat request")
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, pkg.NewInternalServerError("Gagal menghubungi ML API")
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("FastAPI error: %s", resp.Status)
+		return nil, pkg.NewInternalServerError("ML API error: " + resp.Status)
 	}
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, pkg.NewInternalServerError("Gagal membaca response")
 	}
 
 	return data, nil
 }
 
-// CreateIndividualPredict implements PredictService.
 func (p *predictService) CreateIndividualPredict(req requests.CreateToddlerRequest, locationID, toddlerID, userID int) (*responses.PredictResponse, error) {
+	if err := pkg.ValidateStruct(req); err != nil {
+		return nil, pkg.NewBadRequestError(err.Error())
+	}
 	today := time.Now()
 
 	age := (today.Year()-req.Birthdate.Year())*12 + int(today.Month()) - int(req.Birthdate.Month())
@@ -148,13 +148,13 @@ func (p *predictService) CreateIndividualPredict(req requests.CreateToddlerReque
 
 	resp, err := http.Post(p.mlAPIURL+"/predict-individual", "application/json", bytes.NewBuffer(payload))
 	if err != nil {
-		return nil, err
+		return nil, pkg.NewInternalServerError("Gagal menghubungi ML API")
 	}
 	defer resp.Body.Close()
 
 	var mlResult map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&mlResult); err != nil {
-		return nil, err
+		return nil, pkg.NewInternalServerError("Gagal decode response ML API")
 	}
 
 	predictModel := &models.Predict{
@@ -173,7 +173,7 @@ func (p *predictService) CreateIndividualPredict(req requests.CreateToddlerReque
 
 	saved, err := p.repo.CreateIndividualPredict(predictModel, locationID, toddlerID)
 	if err != nil {
-		return nil, err
+		return nil, pkg.NewInternalServerError("Gagal menyimpan prediksi")
 	}
 
 	return &responses.PredictResponse{
@@ -191,12 +191,14 @@ func (p *predictService) CreateIndividualPredict(req requests.CreateToddlerReque
 	}, nil
 }
 
-// DeletePredictByID implements PredictService.
 func (p *predictService) DeletePredictByID(id int, locationID, userID int) error {
-	return p.repo.DeletePredictByID(id, locationID, userID)
+	err := p.repo.DeletePredictByID(id, locationID, userID)
+	if err != nil {
+		return pkg.NewInternalServerError("Gagal menghapus prediksi")
+	}
+	return nil
 }
 
-// GetAllPredict implements PredictService.
 func (p *predictService) GetAllPredict(locationID int, pageStr, limitStr string) ([]responses.PredictResponse, *responses.PaginationMeta, error) {
 	page, _ := strconv.Atoi(pageStr)
 	limit, _ := strconv.Atoi(limitStr)
@@ -214,7 +216,7 @@ func (p *predictService) GetAllPredict(locationID int, pageStr, limitStr string)
 	predicts, total, err := p.repo.GetAllPredict(locationID, limit, offset)
 
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, pkg.NewInternalServerError("Gagal mengambil data prediksi")
 	}
 
 	totalPage := int(math.Ceil(float64(total) / float64(limit)))
@@ -246,11 +248,10 @@ func (p *predictService) GetAllPredict(locationID int, pageStr, limitStr string)
 	return responsesList, &meta, nil
 }
 
-// GetAllPredictByToddlerID implements PredictService.
 func (p *predictService) GetAllPredictByToddlerID(locationID int, toddlerID int) ([]responses.PredictResponse, error) {
 	predicts, err := p.repo.GetAllPredictByToddlerID(locationID, toddlerID)
 	if err != nil {
-		return nil, err
+		return nil, pkg.NewInternalServerError("Gagal mengambil data prediksi")
 	}
 
 	var responsesList []responses.PredictResponse
@@ -273,11 +274,10 @@ func (p *predictService) GetAllPredictByToddlerID(locationID int, toddlerID int)
 	return responsesList, nil
 }
 
-// GetPredictByID implements PredictService.
 func (p *predictService) GetPredictByID(id int) (*responses.PredictResponse, error) {
 	predict, err := p.repo.GetPredictByID(id)
 	if err != nil {
-		return nil, err
+		return nil, pkg.NewNotFoundError("Prediksi tidak ditemukan")
 	}
 
 	return &responses.PredictResponse{
@@ -295,14 +295,13 @@ func (p *predictService) GetPredictByID(id int) (*responses.PredictResponse, err
 	}, nil
 }
 
-// UpdatePredictByID implements PredictService.
 func (p *predictService) UpdatePredictByID(id int, req *requests.UpdatePredictRequest) (*responses.PredictResponse, error) {
 	predictModel := &models.Predict{
 		ID:                id,
 		DeletedByID:       nil,
 		Height:            *req.Height,
 		Age:               *req.Age,
-		Sex:               req.Sex,
+		Sex:               *req.Sex,
 		Zscore:            *req.Zscore,
 		NutritionalStatus: *req.NutritionalStatus,
 		UpdatedAt:         time.Now(),
@@ -310,7 +309,7 @@ func (p *predictService) UpdatePredictByID(id int, req *requests.UpdatePredictRe
 
 	updated, err := p.repo.UpdatePredictByID(id, predictModel)
 	if err != nil {
-		return nil, err
+		return nil, pkg.NewInternalServerError("Gagal update prediksi")
 	}
 
 	return &responses.PredictResponse{

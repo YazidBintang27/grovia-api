@@ -2,14 +2,13 @@ package services
 
 import (
 	"context"
-	"fmt"
 	"grovia/internal/dto/requests"
 	"grovia/internal/dto/responses"
 	"grovia/internal/models"
 	"grovia/internal/repositories"
+	"grovia/pkg"
 	"math"
 	"strconv"
-	"strings"
 )
 
 type ToddlerService interface {
@@ -31,22 +30,9 @@ type toddlerService struct {
 	predict    PredictService
 }
 
-// UpdateToddlerByIDWithoutPredict implements ToddlerService.
 func (t *toddlerService) UpdateToddlerByIDWithoutPredict(ctx context.Context, id int, locationID, userID int, req requests.UpdateToddlerRequest) (*responses.ToddlerResponse, error) {
-	if req.Name != nil && strings.TrimSpace(*req.Name) == "" {
-		return nil, fmt.Errorf("nama tidak boleh kosong")
-	}
-	if req.Height != nil && *req.Height <= 0 {
-		return nil, fmt.Errorf("tinggi badan tidak boleh 0 atau negatif")
-	}
-	if req.Sex != "" && req.Sex != "M" && req.Sex != "F" {
-		return nil, fmt.Errorf("jenis kelamin harus M atau F")
-	}
-	if req.Birthdate != nil && req.Birthdate.IsZero() {
-		return nil, fmt.Errorf("tanggal lahir tidak valid")
-	}
-	if req.PhoneNumber != nil && strings.TrimSpace(*req.PhoneNumber) == "" {
-		return nil, fmt.Errorf("nomor telepon tidak boleh kosong")
+	if err := pkg.ValidateStruct(req); err != nil {
+		return nil, pkg.NewBadRequestError(err.Error())
 	}
 
 	var url string
@@ -54,7 +40,7 @@ func (t *toddlerService) UpdateToddlerByIDWithoutPredict(ctx context.Context, id
 	if req.ProfilePicture != nil && req.ProfilePicture.Filename != "" && req.ProfilePicture.Size > 0 {
 		url, err = t.s3.UploadFile(ctx, req.ProfilePicture, "toddlers")
 		if err != nil {
-			return nil, fmt.Errorf("gagal upload foto: %v", err)
+			return nil, pkg.NewInternalServerError("Gagal upload foto")
 		}
 	}
 
@@ -62,7 +48,7 @@ func (t *toddlerService) UpdateToddlerByIDWithoutPredict(ctx context.Context, id
 	if req.PhoneNumber != nil {
 		parent, err := t.parentRepo.FindParentByPhoneNumber(*req.PhoneNumber)
 		if err != nil {
-			return nil, fmt.Errorf("orang tua dengan nomor HP %s tidak ditemukan", *req.PhoneNumber)
+			return nil, pkg.NewNotFoundError("Orang tua dengan nomor HP " + *req.PhoneNumber + " tidak ditemukan")
 		}
 		parentID = parent.ID
 	}
@@ -84,7 +70,7 @@ func (t *toddlerService) UpdateToddlerByIDWithoutPredict(ctx context.Context, id
 	}
 	toddler, err := t.repo.UpdateToddlerByID(id, locationID, &toddlerMapping)
 	if err != nil {
-		return nil, fmt.Errorf("gagal update data toddler: %w", err)
+		return nil, pkg.NewInternalServerError("Gagal update data toddler")
 	}
 
 	toddlerResponse := responses.ToddlerResponse{
@@ -106,7 +92,6 @@ func (t *toddlerService) UpdateToddlerByIDWithoutPredict(ctx context.Context, id
 	return &toddlerResponse, nil
 }
 
-// GetAllToddlerAllLocation implements ToddlerService.
 func (t *toddlerService) GetAllToddlerAllLocation(name, pageStr, limitStr string) ([]responses.ToddlerResponse, *responses.PaginationMeta, error) {
 	page, _ := strconv.Atoi(pageStr)
 	limit, _ := strconv.Atoi(limitStr)
@@ -124,7 +109,7 @@ func (t *toddlerService) GetAllToddlerAllLocation(name, pageStr, limitStr string
 	toddlers, total, err := t.repo.GetAllToddlerAllLocation(name, limit, offset)
 
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, pkg.NewInternalServerError("Gagal mengambil data toddler")
 	}
 
 	totalPage := int(math.Ceil(float64(total) / float64(limit)))
@@ -158,21 +143,19 @@ func (t *toddlerService) GetAllToddlerAllLocation(name, pageStr, limitStr string
 	return toddlerResponses, &meta, nil
 }
 
-// CheckToddlerExists implements ToddlerService.
 func (t *toddlerService) CheckToddlerExists(phoneNumber, name string) (bool, *models.Toddler, error) {
 	parent, err := t.parentRepo.FindParentByPhoneNumber(phoneNumber)
 	if err != nil {
-		return false, nil, err
+		return false, nil, pkg.NewNotFoundError("Parent tidak ditemukan")
 	}
 	return t.repo.FindToddlerByName(parent.ID, name)
 }
 
-// CreateToddler implements ToddlerService.
 func (t *toddlerService) CreateToddler(req requests.CreateToddlerRequest, userID int) (*responses.ToddlerResponse, *responses.PredictResponse, error) {
 	parent, err := t.parentRepo.FindParentByPhoneNumber(req.PhoneNumber)
 
 	if parent == nil {
-		return nil, nil, fmt.Errorf("parent dengan nomor telepon %s tidak ditemukan", req.PhoneNumber)
+		return nil, nil, pkg.NewNotFoundError("Parent dengan nomor telepon " + req.PhoneNumber + " tidak ditemukan")
 	}
 
 	toddlerMapping := models.Toddler{
@@ -188,19 +171,19 @@ func (t *toddlerService) CreateToddler(req requests.CreateToddlerRequest, userID
 	}
 
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, pkg.NewInternalServerError("Gagal memproses data parent")
 	}
 
 	toddler, err := t.repo.CreateToddler(&toddlerMapping)
 
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, pkg.NewInternalServerError("Gagal membuat toddler")
 	}
 
 	predict, err := t.predict.CreateIndividualPredict(req, toddler.LocationID, toddler.ID, userID)
 
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, pkg.NewInternalServerError("Gagal membuat prediksi")
 	}
 
 	toddlerModel := models.Toddler{
@@ -217,7 +200,7 @@ func (t *toddlerService) CreateToddler(req requests.CreateToddlerRequest, userID
 	_, err = t.repo.UpdateToddlerByID(toddler.ID, parent.LocationID, &toddlerModel)
 
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, pkg.NewInternalServerError("Gagal update nutritional status")
 	}
 
 	toddlerResponse := responses.ToddlerResponse{
@@ -251,33 +234,17 @@ func (t *toddlerService) CreateToddler(req requests.CreateToddlerRequest, userID
 	return &toddlerResponse, &predictResponse, nil
 }
 
-// CreateToddlerWithParent implements ToddlerService.
 func (t *toddlerService) CreateToddlerWithParent(
 	toddlerReq requests.CreateToddlerRequest,
 	parentReq requests.CreateParentRequest,
 	userID int,
 ) (*responses.ToddlerResponse, *responses.ParentResponse, *responses.PredictResponse, error) {
-	if strings.TrimSpace(parentReq.Name) == "" ||
-		strings.TrimSpace(parentReq.PhoneNumber) == "" ||
-		strings.TrimSpace(parentReq.Address) == "" ||
-		strings.TrimSpace(parentReq.Nik) == "" ||
-		strings.TrimSpace(parentReq.Job) == "" {
-		return nil, nil, nil, fmt.Errorf("semua field parent (name, phone_number, address, nik, job) wajib diisi")
+	if err := pkg.ValidateStruct(toddlerReq); err != nil {
+		return nil, nil, nil, pkg.NewBadRequestError(err.Error())
 	}
 
-	if strings.TrimSpace(toddlerReq.Name) == "" ||
-		strings.TrimSpace(toddlerReq.Sex) == "" ||
-		toddlerReq.Height <= 0 ||
-		toddlerReq.Birthdate.IsZero() {
-		return nil, nil, nil, fmt.Errorf("semua field toddler (name, birthdate, sex, height) wajib diisi dan valid")
-	}
-
-	if len(parentReq.PhoneNumber) < 10 || len(parentReq.PhoneNumber) > 15 {
-		return nil, nil, nil, fmt.Errorf("nomor telepon harus memiliki panjang antara 10 sampai 15 digit")
-	}
-
-	if len(parentReq.Nik) != 16 {
-		return nil, nil, nil, fmt.Errorf("NIK harus memiliki tepat 16 digit")
+	if err := pkg.ValidateStruct(parentReq); err != nil {
+		return nil, nil, nil, pkg.NewBadRequestError(err.Error())
 	}
 
 	parentMapping := models.Parent{
@@ -294,7 +261,7 @@ func (t *toddlerService) CreateToddlerWithParent(
 
 	parent, err := t.parentRepo.CreateParent(&parentMapping)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, pkg.NewInternalServerError("Gagal membuat parent")
 	}
 
 	toddlerMapping := models.Toddler{
@@ -311,12 +278,12 @@ func (t *toddlerService) CreateToddlerWithParent(
 
 	toddler, err := t.repo.CreateToddler(&toddlerMapping)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, pkg.NewInternalServerError("Gagal membuat toddler")
 	}
 
 	predict, err := t.predict.CreateIndividualPredict(toddlerReq, parentReq.LocationID, toddler.ID, userID)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, pkg.NewInternalServerError("Gagal membuat prediksi")
 	}
 
 	toddlerModel := models.Toddler{
@@ -335,7 +302,7 @@ func (t *toddlerService) CreateToddlerWithParent(
 
 	_, err = t.repo.UpdateToddlerByID(toddler.ID, parentReq.LocationID, &toddlerModel)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, pkg.NewInternalServerError("Gagal update nutritional status")
 	}
 
 	toddler.NutritionalStatus = predict.NutritionalStatus
@@ -386,12 +353,14 @@ func (t *toddlerService) CreateToddlerWithParent(
 	return &toddlerResponse, &parentResp, &predictResponse, nil
 }
 
-// DeleteToddlerByID implements ToddlerService.
 func (t *toddlerService) DeleteToddlerByID(id int, locationID, userID int) error {
-	return t.repo.DeleteToddlerByID(id, locationID, userID)
+	err := t.repo.DeleteToddlerByID(id, locationID, userID)
+	if err != nil {
+		return pkg.NewInternalServerError("Gagal menghapus toddler")
+	}
+	return nil
 }
 
-// GetAllToddler implements ToddlerService.
 func (t *toddlerService) GetAllToddler(locationID int, name, pageStr, limitStr string) ([]responses.ToddlerResponse, *responses.PaginationMeta, error) {
 	page, _ := strconv.Atoi(pageStr)
 	limit, _ := strconv.Atoi(limitStr)
@@ -409,7 +378,7 @@ func (t *toddlerService) GetAllToddler(locationID int, name, pageStr, limitStr s
 	toddlers, total, err := t.repo.GetAllToddler(locationID, limit, offset, name)
 
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, pkg.NewInternalServerError("Gagal mengambil data toddler")
 	}
 
 	totalPage := int(math.Ceil(float64(total) / float64(limit)))
@@ -444,12 +413,11 @@ func (t *toddlerService) GetAllToddler(locationID int, name, pageStr, limitStr s
 	return toddlerResponse, &meta, err
 }
 
-// GetToddlerByID implements ToddlerService.
 func (t *toddlerService) GetToddlerByID(id int, locationID int) (*responses.ToddlerResponse, error) {
 	toddler, err := t.repo.GetToddlerByID(id, locationID)
 
 	if err != nil {
-		return nil, err
+		return nil, pkg.NewNotFoundError("Toddler tidak ditemukan")
 	}
 
 	toddlerResponse := responses.ToddlerResponse{
@@ -471,11 +439,14 @@ func (t *toddlerService) GetToddlerByID(id int, locationID int) (*responses.Todd
 	return &toddlerResponse, nil
 }
 
-// UpdateToddlerByID implements ToddlerService.
 func (t *toddlerService) UpdateToddlerByID(
 	ctx context.Context, id, locationID, userID int,
 	req requests.UpdateToddlerRequest,
 ) (*responses.ToddlerResponse, *responses.PredictResponse, error) {
+
+	if err := pkg.ValidateStruct(req); err != nil {
+		return nil, nil, pkg.NewBadRequestError(err.Error())
+	}
 
 	toddlerRequest := requests.CreateToddlerRequest{}
 	if req.Name != nil {
@@ -507,23 +478,7 @@ func (t *toddlerService) UpdateToddlerByID(
 		userID,
 	)
 	if err != nil {
-		return nil, nil, fmt.Errorf("gagal membuat prediksi: %w", err)
-	}
-
-	if req.Name != nil && strings.TrimSpace(*req.Name) == "" {
-		return nil, nil, fmt.Errorf("nama tidak boleh kosong")
-	}
-	if req.Height != nil && *req.Height <= 0 {
-		return nil, nil, fmt.Errorf("tinggi badan tidak boleh 0 atau negatif")
-	}
-	if req.Sex != "" && req.Sex != "M" && req.Sex != "F" {
-		return nil, nil, fmt.Errorf("jenis kelamin harus M atau F")
-	}
-	if req.Birthdate != nil && req.Birthdate.IsZero() {
-		return nil, nil, fmt.Errorf("tanggal lahir tidak valid")
-	}
-	if req.PhoneNumber != nil && strings.TrimSpace(*req.PhoneNumber) == "" {
-		return nil, nil, fmt.Errorf("nomor telepon tidak boleh kosong")
+		return nil, nil, pkg.NewInternalServerError("Gagal membuat prediksi")
 	}
 
 	var url string
@@ -531,7 +486,7 @@ func (t *toddlerService) UpdateToddlerByID(
 	if req.ProfilePicture != nil && req.ProfilePicture.Filename != "" && req.ProfilePicture.Size > 0 {
 		url, err = t.s3.UploadFile(ctx, req.ProfilePicture, "toddlers")
 		if err != nil {
-			return nil, nil, fmt.Errorf("gagal upload foto: %v", err)
+			return nil, nil, pkg.NewInternalServerError("Gagal upload foto")
 		}
 	}
 
@@ -539,7 +494,7 @@ func (t *toddlerService) UpdateToddlerByID(
 	if req.PhoneNumber != nil {
 		parent, err := t.parentRepo.FindParentByPhoneNumber(*req.PhoneNumber)
 		if err != nil {
-			return nil, nil, fmt.Errorf("orang tua dengan nomor HP %s tidak ditemukan", *req.PhoneNumber)
+			return nil, nil, pkg.NewNotFoundError("Orang tua dengan nomor HP " + *req.PhoneNumber + " tidak ditemukan")
 		}
 		parentID = parent.ID
 	}
@@ -572,7 +527,7 @@ func (t *toddlerService) UpdateToddlerByID(
 
 	toddler, err := t.repo.UpdateToddlerByID(id, locationID, &toddlerMapping)
 	if err != nil {
-		return nil, nil, fmt.Errorf("gagal update data toddler: %w", err)
+		return nil, nil, pkg.NewInternalServerError("Gagal update data toddler")
 	}
 
 	toddlerResponse := responses.ToddlerResponse{

@@ -4,6 +4,7 @@ import (
 	"grovia/internal/dto/requests"
 	"grovia/internal/dto/responses"
 	"grovia/internal/services"
+	"grovia/pkg"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -50,15 +51,7 @@ func (p *ParentHandler) CreateParent(ctx *fiber.Ctx) error {
 
 	parentResp, err := p.service.CreateParent(req, userID)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusCreated).JSON(responses.BaseResponse{
@@ -92,15 +85,7 @@ func (p *ParentHandler) GetAllParent(ctx *fiber.Ctx) error {
 	parents, meta, err := p.service.GetAllParent(locationID, name, pageStr, limitStr)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -146,15 +131,7 @@ func (p *ParentHandler) GetParentByID(ctx *fiber.Ctx) error {
 	parent, err := p.service.GetParentByID(id, locationID)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -212,15 +189,7 @@ func (p *ParentHandler) UpdateParentByID(ctx *fiber.Ctx) error {
 	parentResponses, err := p.service.UpdateParentByID(id, locationID, userID, req)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -265,15 +234,7 @@ func (p *ParentHandler) DeleteParentByID(ctx *fiber.Ctx) error {
 	err = p.service.DeleteParentByID(id, locationID, userID)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -315,15 +276,7 @@ func (p *ParentHandler) CheckPhoneExists(ctx *fiber.Ctx) error {
 
 	parent, err := p.service.CheckPhoneExists(phoneNumber)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	exists := parent != nil
@@ -366,15 +319,7 @@ func (p *ParentHandler) GetAllPredictAllLocation(ctx *fiber.Ctx) error {
 	parentResponses, meta, err := p.service.GetAllParentAllLocation(name, pageStr, limitStr)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{

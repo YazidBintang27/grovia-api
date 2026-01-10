@@ -29,12 +29,7 @@ func (l *locationRepository) CreateLocation(location *models.Location) (*models.
 
 // DeleteLocationByID implements LocationRepository.
 func (l *locationRepository) DeleteLocationByID(id, userID int) error {
-	res := l.db.Model(&models.Location{}).
-		Where("id = ?", id).
-		Updates(map[string]any{
-		"deleted_by_id": userID,
-		"deleted_at":    gorm.Expr("NOW()"),
-	})
+	res := l.db.Where("id = ?", id).Delete(&models.Location{})
 
 	if res.Error != nil {
 		return res.Error
