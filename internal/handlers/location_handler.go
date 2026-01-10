@@ -4,6 +4,7 @@ import (
 	"grovia/internal/dto/requests"
 	"grovia/internal/dto/responses"
 	"grovia/internal/services"
+	"grovia/pkg"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -67,15 +68,7 @@ func (l *LocationHandler) CreateLocation(ctx *fiber.Ctx) error {
 	locationResponse, err := l.service.CreateLocation(ctx.Context(), req, userID)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -121,15 +114,7 @@ func (l *LocationHandler) GetAllLocation(ctx *fiber.Ctx) error {
 	locationsResponse, meta, err := l.service.GetAllLocation(name, pageStr, limitStr)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -174,15 +159,7 @@ func (l *LocationHandler) GetLocationByID(ctx *fiber.Ctx) error {
 	locationResponse, err := l.service.GetLocationByID(id)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -258,15 +235,7 @@ func (l *LocationHandler) UpdateLocationByID(ctx *fiber.Ctx) error {
 	locationResponse, err := l.service.UpdateLocationByID(ctx.Context(), id, userID, req)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -323,15 +292,7 @@ func (l *LocationHandler) DeleteLocationByID(ctx *fiber.Ctx) error {
 	err = l.service.DeleteLocationByID(id, userID)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{

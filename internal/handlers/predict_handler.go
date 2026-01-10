@@ -4,6 +4,7 @@ import (
 	"grovia/internal/dto/requests"
 	"grovia/internal/dto/responses"
 	"grovia/internal/services"
+	"grovia/pkg"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -45,14 +46,7 @@ func (h *PredictHandler) CreateGroupPredict(ctx *fiber.Ctx) error {
 
 	filePath := "./uploads/" + file.Filename
 	if err := ctx.SaveFile(file, filePath); err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Failed to save file",
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	data, err := h.service.CreateGroupPredict(filePath)
@@ -91,14 +85,7 @@ func (h *PredictHandler) GetAllPredict(ctx *fiber.Ctx) error {
 
 	predicts, meta, err := h.service.GetAllPredict(locationID, pageStr, limitStr)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -139,14 +126,7 @@ func (h *PredictHandler) GetAllPredictByToddlerID(ctx *fiber.Ctx) error {
 
 	predicts, err := h.service.GetAllPredictByToddlerID(locationID, toddlerID)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -185,14 +165,7 @@ func (h *PredictHandler) GetPredictByID(ctx *fiber.Ctx) error {
 
 	predict, err := h.service.GetPredictByID(id)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -243,14 +216,7 @@ func (h *PredictHandler) UpdatePredictByID(ctx *fiber.Ctx) error {
 
 	updated, err := h.service.UpdatePredictByID(id, &req)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -289,14 +255,7 @@ func (h *PredictHandler) DeletePredictByID(ctx *fiber.Ctx) error {
 	}
 
 	if err := h.service.DeletePredictByID(id, locationID, userID); err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -325,15 +284,7 @@ func (h *PredictHandler) GetAllPredictAllLocation(ctx *fiber.Ctx) error {
 	predictResponses, meta, err := h.service.GetAllPredictAllLocation(pageStr, limitStr)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{

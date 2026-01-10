@@ -4,6 +4,7 @@ import (
 	"grovia/internal/dto/requests"
 	"grovia/internal/dto/responses"
 	"grovia/internal/services"
+	"grovia/pkg"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
@@ -56,15 +57,7 @@ func (u *UserHandler) CreateUser(ctx *fiber.Ctx) error {
 	user, err := u.service.CreateUser(ctx.Context(), req, role, locationID)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -93,15 +86,7 @@ func (u *UserHandler) GetCurrentUser(ctx *fiber.Ctx) error {
 	user, err := u.service.GetCurrentUser(userID)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: "Internal Server Error",
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -145,15 +130,7 @@ func (u *UserHandler) GetUserByID(ctx *fiber.Ctx) error {
 	user, err := u.service.GetUserById(id, role.(string))
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -187,15 +164,7 @@ func (u *UserHandler) GetUsersByRole(ctx *fiber.Ctx) error {
 	user, meta, err := u.service.GetUsersByRole(role.(string), name, pageStr, limitStr, locationID)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -243,15 +212,7 @@ func (u *UserHandler) UpdateCurrentUser(ctx *fiber.Ctx) error {
 	user, err := u.service.UpdateCurrentUser(ctx.Context(), userID, req)
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -313,15 +274,7 @@ func (u *UserHandler) UpdateUserByID(ctx *fiber.Ctx) error {
 	user, err := u.service.UpdateUserByID(ctx.Context(), id, req, role.(string))
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -348,15 +301,7 @@ func (u *UserHandler) DeleteCurrentUser(ctx *fiber.Ctx) error {
 	}
 
 	if err := u.service.DeleteCurrentUser(userID); err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{
@@ -397,15 +342,7 @@ func (u *UserHandler) DeleteUserByID(ctx *fiber.Ctx) error {
 	}
 
 	if err := u.service.DeleteUserByID(id, role.(string)); err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(responses.BaseResponse{
-			Success: false,
-			Message: "Internal Server Error",
-			Data:    nil,
-			Error: responses.ErrorResponse{
-				Code:    "INTERNAL_SERVER_ERROR",
-				Message: err.Error(),
-			},
-		})
+		return pkg.HandleServiceError(ctx, err)
 	}
 
 	return ctx.Status(fiber.StatusOK).JSON(responses.BaseResponse{

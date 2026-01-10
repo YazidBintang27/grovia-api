@@ -1,14 +1,12 @@
 package services
 
 import (
-	"errors"
-	"fmt"
 	"grovia/internal/dto/requests"
 	"grovia/internal/dto/responses"
 	"grovia/internal/models"
 	"grovia/internal/repositories"
+	"grovia/pkg"
 	"math"
-	"regexp"
 	"strconv"
 	"strings"
 )
@@ -27,22 +25,9 @@ type parentService struct {
 	repo repositories.ParentRepository
 }
 
-// CreateParent implements ParentService.
 func (p *parentService) CreateParent(req requests.CreateParentRequest, userID int) (*responses.ParentResponse, error) {
-	if strings.TrimSpace(req.Name) == "" ||
-		strings.TrimSpace(req.PhoneNumber) == "" ||
-		strings.TrimSpace(req.Address) == "" ||
-		strings.TrimSpace(req.Nik) == "" ||
-		strings.TrimSpace(req.Job) == "" {
-		return nil, fmt.Errorf("semua field parent (name, phone_number, address, nik, job) wajib diisi")
-	}
-
-	if len(req.PhoneNumber) < 10 || len(req.PhoneNumber) > 15 {
-		return nil, fmt.Errorf("nomor telepon harus memiliki panjang antara 10 sampai 15 digit")
-	}
-
-	if len(req.Nik) != 16 {
-		return nil, fmt.Errorf("NIK harus memiliki tepat 16 digit")
+	if err := pkg.ValidateStruct(req); err != nil {
+		return nil, pkg.NewBadRequestError(err.Error())
 	}
 
 	parentMapping := models.Parent{
@@ -60,7 +45,7 @@ func (p *parentService) CreateParent(req requests.CreateParentRequest, userID in
 	parent, err := p.repo.CreateParent(&parentMapping)
 
 	if err != nil {
-		return nil, err
+		return nil, pkg.NewInternalServerError("Gagal membuat parent")
 	}
 
 	parentResp := responses.ParentResponse{
@@ -80,7 +65,6 @@ func (p *parentService) CreateParent(req requests.CreateParentRequest, userID in
 	return &parentResp, nil
 }
 
-// GetAllParentAllLocation implements ParentService.
 func (p *parentService) GetAllParentAllLocation(name, pageStr, limitStr string) ([]responses.ParentResponse, *responses.PaginationMeta, error) {
 	page, _ := strconv.Atoi(pageStr)
 	limit, _ := strconv.Atoi(limitStr)
@@ -98,7 +82,7 @@ func (p *parentService) GetAllParentAllLocation(name, pageStr, limitStr string) 
 	parents, total, err := p.repo.GetAllParentAllLocation(name, limit, offset)
 
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, pkg.NewInternalServerError("Gagal mengambil data parent")
 	}
 
 	totalPage := int(math.Ceil(float64(total) / float64(limit)))
@@ -130,17 +114,22 @@ func (p *parentService) GetAllParentAllLocation(name, pageStr, limitStr string) 
 	return parentResponses, &meta, nil
 }
 
-// CheckPhoneExists implements ParentService.
 func (p *parentService) CheckPhoneExists(phoneNumber string) (*models.Parent, error) {
-	return p.repo.FindParentByPhoneNumber(phoneNumber)
+	parent, err := p.repo.FindParentByPhoneNumber(phoneNumber)
+	if err != nil {
+		return nil, pkg.NewNotFoundError("Nomor telepon tidak ditemukan")
+	}
+	return parent, nil
 }
 
-// DeleteParentByID implements ParentService.
 func (p *parentService) DeleteParentByID(id int, locationID, userID int) error {
-	return p.repo.DeleteParentByID(id, locationID, userID)
+	err := p.repo.DeleteParentByID(id, locationID, userID)
+	if err != nil {
+		return pkg.NewInternalServerError("Gagal menghapus parent")
+	}
+	return nil
 }
 
-// GetAllParent implements ParentService.
 func (p *parentService) GetAllParent(locationID int, name, pageStr, limitStr string) ([]responses.ParentResponse, *responses.PaginationMeta, error) {
 	page, _ := strconv.Atoi(pageStr)
 	limit, _ := strconv.Atoi(limitStr)
@@ -158,7 +147,7 @@ func (p *parentService) GetAllParent(locationID int, name, pageStr, limitStr str
 	parents, total, err := p.repo.GetAllParent(locationID, limit, offset, name)
 
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, pkg.NewInternalServerError("Gagal mengambil data parent")
 	}
 
 	totalPage := int(math.Ceil(float64(total) / float64(limit)))
@@ -191,12 +180,11 @@ func (p *parentService) GetAllParent(locationID int, name, pageStr, limitStr str
 	return parentResponse, &meta, nil
 }
 
-// GetParentByID implements ParentService.
 func (p *parentService) GetParentByID(id int, locationID int) (*responses.ParentResponse, error) {
 	parent, err := p.repo.GetParentByID(id, locationID)
 
 	if err != nil {
-		return nil, err
+		return nil, pkg.NewNotFoundError("Parent tidak ditemukan")
 	}
 
 	var toddlerResponses []responses.ToddlerResponse
@@ -236,8 +224,11 @@ func (p *parentService) GetParentByID(id int, locationID int) (*responses.Parent
 	return &parentResponses, nil
 }
 
-// UpdateParentByID implements ParentService.
 func (p *parentService) UpdateParentByID(id int, locationID, userID int, req requests.UpdateParentRequest) (*responses.ParentResponse, error) {
+	if err := pkg.ValidateStruct(req); err != nil {
+		return nil, pkg.NewBadRequestError(err.Error())
+	}
+
 	parentMapping := models.Parent{
 		UpdatedByID: userID,
 	}
@@ -249,15 +240,6 @@ func (p *parentService) UpdateParentByID(id int, locationID, userID int, req req
 
 	if req.PhoneNumber != nil {
 		phone := strings.TrimSpace(*req.PhoneNumber)
-		if phone != "" {
-			if len(phone) < 10 || len(phone) > 15 {
-				return nil, errors.New("nomor HP harus antara 10–15 digit")
-			}
-
-			if !regexp.MustCompile(`^[0-9]+$`).MatchString(phone) {
-				return nil, errors.New("nomor HP hanya boleh berisi angka")
-			}
-		}
 		parentMapping.PhoneNumber = phone
 	}
 
@@ -268,11 +250,6 @@ func (p *parentService) UpdateParentByID(id int, locationID, userID int, req req
 
 	if req.Nik != nil {
 		nik := strings.TrimSpace(*req.Nik)
-		if nik != "" {
-			if !regexp.MustCompile(`^[0-9]{16}$`).MatchString(nik) {
-				return nil, errors.New("NIK harus terdiri dari 16 digit angka")
-			}
-		}
 		parentMapping.Nik = nik
 	}
 
@@ -287,7 +264,7 @@ func (p *parentService) UpdateParentByID(id int, locationID, userID int, req req
 
 	parent, err := p.repo.UpdateParentByID(id, locationID, &parentMapping)
 	if err != nil {
-		return nil, fmt.Errorf("gagal update data orang tua: %w", err)
+		return nil, pkg.NewInternalServerError("Gagal update data parent")
 	}
 
 	parentResponse := responses.ParentResponse{

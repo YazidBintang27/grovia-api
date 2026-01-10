@@ -1,7 +1,6 @@
 package services
 
 import (
-	"errors"
 	"grovia/internal/dto/requests"
 	"grovia/internal/dto/responses"
 	"grovia/internal/repositories"
@@ -18,21 +17,20 @@ type authService struct {
 	repo repositories.AuthRepository
 }
 
-// RefreshToken implements AuthService.
 func (a *authService) RefreshToken(refreshToken string) (*responses.TokenResponse, error) {
 	claims, err := pkg.ValidateToken(refreshToken)
 	if err != nil {
-		return nil, errors.New("invalid or expired refresh token")
+		return nil, pkg.NewUnauthorizedError("Token tidak valid atau sudah kadaluarsa")
 	}
 
 	user, err := a.repo.FindByID(claims.UserID)
 	if err != nil {
-		return nil, errors.New("user not found")
+		return nil, pkg.NewNotFoundError("User tidak ditemukan")
 	}
 
 	accessToken, newRefreshToken, err := pkg.GenerateJWT(user.ID, user.LocationID, user.Role)
 	if err != nil {
-		return nil, errors.New("failed to generate new tokens")
+		return nil, pkg.NewInternalServerError("Gagal membuat token baru")
 	}
 
 	return &responses.TokenResponse{
@@ -41,49 +39,50 @@ func (a *authService) RefreshToken(refreshToken string) (*responses.TokenRespons
 	}, nil
 }
 
-// ResetPassword implements AuthService.
 func (a *authService) ResetPassword(req requests.ResetPasswordRequest) error {
+	if err := pkg.ValidateStruct(req); err != nil {
+		return pkg.NewBadRequestError(err.Error())
+	}
+
 	if req.Password != req.ConfirmPassword {
-		return errors.New("password and confirm password do not match")
+		return pkg.NewBadRequestError("Password dan Confirm Password tidak cocok")
 	}
 
 	_, err := VerifyFirebaseToken(req.FirebaseToken)
-
 	if err != nil {
-		return err
+		return pkg.NewUnauthorizedError("Firebase token tidak valid")
 	}
 
 	hashed, err := pkg.HashPassword(req.Password)
-
 	if err != nil {
-		return err
+		return pkg.NewInternalServerError("Gagal memproses password")
 	}
 
 	err = a.repo.ResetPassword(req.PhoneNumber, hashed)
-
 	if err != nil {
-		return err
+		return pkg.NewInternalServerError("Gagal mereset password")
 	}
 
 	return nil
 }
 
-// Login implements AuthService.
 func (a *authService) Login(req requests.LoginRequest) (*responses.TokenResponse, error) {
-	user, err := a.repo.FindByPhoneNumber(req.PhoneNumber)
+	if err := pkg.ValidateStruct(req); err != nil {
+		return nil, pkg.NewBadRequestError(err.Error())
+	}
 
+	user, err := a.repo.FindByPhoneNumber(req.PhoneNumber)
 	if err != nil {
-		return nil, errors.New("invalid Phone Number or Password")
+		return nil, pkg.NewNotFoundError("Nomor telepon tidak terdaftar")
 	}
 
 	if !pkg.CheckPassword(req.Password, user.Password) {
-		return nil, errors.New("invalid Password")
+		return nil, pkg.NewUnauthorizedError("Password salah")
 	}
 
 	accessToken, refreshToken, err := pkg.GenerateJWT(user.ID, user.LocationID, user.Role)
-
 	if err != nil {
-		return nil, errors.New(err.Error())
+		return nil, pkg.NewInternalServerError("Gagal membuat token")
 	}
 
 	tokenResponse := responses.TokenResponse{

@@ -2,16 +2,14 @@ package services
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"grovia/internal/dto/requests"
 	"grovia/internal/dto/responses"
 	"grovia/internal/models"
 	"grovia/internal/repositories"
+	"grovia/pkg"
 	"log"
 	"math"
 	"strconv"
-	"strings"
 )
 
 type LocationService interface {
@@ -27,13 +25,9 @@ type locationService struct {
 	s3   *S3Service
 }
 
-// CreateLocation implements LocationService.
 func (l *locationService) CreateLocation(ctx context.Context, req requests.LocationRequest, userID int) (*responses.LocationResponse, error) {
-	if strings.TrimSpace(req.Name) == "" {
-		return nil, fmt.Errorf("nama lokasi tidak boleh kosong")
-	}
-	if strings.TrimSpace(req.Address) == "" {
-		return nil, fmt.Errorf("alamat lokasi tidak boleh kosong")
+	if err := pkg.ValidateStruct(req); err != nil {
+		return nil, pkg.NewBadRequestError(err.Error())
 	}
 
 	locationMapping := models.Location{
@@ -46,7 +40,7 @@ func (l *locationService) CreateLocation(ctx context.Context, req requests.Locat
 	if req.Picture != nil {
 		url, err = l.s3.UploadFile(ctx, req.Picture, "locations")
 		if err != nil {
-			return nil, err
+			return nil, pkg.NewInternalServerError("Gagal upload gambar lokasi")
 		}
 	}
 
@@ -57,7 +51,7 @@ func (l *locationService) CreateLocation(ctx context.Context, req requests.Locat
 	location, err := l.repo.CreateLocation(&locationMapping)
 
 	if err != nil {
-		return nil, err
+		return nil, pkg.NewInternalServerError("Gagal membuat lokasi")
 	}
 
 	locationResponse := responses.LocationResponse{
@@ -72,12 +66,14 @@ func (l *locationService) CreateLocation(ctx context.Context, req requests.Locat
 	return &locationResponse, nil
 }
 
-// DeleteLocationByID implements LocationService.
 func (l *locationService) DeleteLocationByID(id, userID int) error {
-	return l.repo.DeleteLocationByID(id, userID)
+	err := l.repo.DeleteLocationByID(id, userID)
+	if err != nil {
+		return pkg.NewInternalServerError("Gagal menghapus lokasi")
+	}
+	return nil
 }
 
-// GetAllLocation implements LocationService.
 func (l *locationService) GetAllLocation(name, pageStr, limitStr string) ([]responses.LocationResponse, *responses.PaginationMeta, error) {
 	page, _ := strconv.Atoi(pageStr)
 	limit, _ := strconv.Atoi(limitStr)
@@ -97,7 +93,7 @@ func (l *locationService) GetAllLocation(name, pageStr, limitStr string) ([]resp
 	totalPage := int(math.Ceil(float64(total) / float64(limit)))
 
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, pkg.NewInternalServerError("Gagal mengambil data lokasi")
 	}
 
 	var locationsResponse []responses.LocationResponse
@@ -123,12 +119,11 @@ func (l *locationService) GetAllLocation(name, pageStr, limitStr string) ([]resp
 	return locationsResponse, &meta, nil
 }
 
-// GetLocationByID implements LocationService.
 func (l *locationService) GetLocationByID(id int) (*responses.LocationResponse, error) {
 	location, err := l.repo.GetLocationByID(id)
 
 	if err != nil {
-		return nil, err
+		return nil, pkg.NewNotFoundError("Lokasi tidak ditemukan")
 	}
 
 	locationResponse := responses.LocationResponse{
@@ -143,14 +138,9 @@ func (l *locationService) GetLocationByID(id int) (*responses.LocationResponse, 
 	return &locationResponse, nil
 }
 
-// UpdateLocationByID implements LocationService.
 func (l *locationService) UpdateLocationByID(ctx context.Context, id, userID int, req requests.LocationRequest) (*responses.LocationResponse, error) {
-	if strings.TrimSpace(req.Name) == "" {
-		return nil, errors.New("nama lokasi tidak boleh kosong")
-	}
-
-	if strings.TrimSpace(req.Address) == "" {
-		return nil, errors.New("alamat lokasi tidak boleh kosong")
+	if err := pkg.ValidateStruct(req); err != nil {
+		return nil, pkg.NewBadRequestError(err.Error())
 	}
 
 	var url string
@@ -158,7 +148,7 @@ func (l *locationService) UpdateLocationByID(ctx context.Context, id, userID int
 	if req.Picture != nil && req.Picture.Filename != "" && req.Picture.Size > 0 {
 		url, err = l.s3.UploadFile(ctx, req.Picture, "locations")
 		if err != nil {
-			return nil, fmt.Errorf("gagal mengunggah gambar lokasi: %w", err)
+			return nil, pkg.NewInternalServerError("Gagal upload gambar lokasi")
 		}
 	}
 
@@ -175,7 +165,7 @@ func (l *locationService) UpdateLocationByID(ctx context.Context, id, userID int
 
 	location, err := l.repo.UpdateLocationByID(id, &locationMapping)
 	if err != nil {
-		return nil, fmt.Errorf("gagal memperbarui data lokasi: %w", err)
+		return nil, pkg.NewInternalServerError("Gagal update data lokasi")
 	}
 
 	locationResponse := responses.LocationResponse{
