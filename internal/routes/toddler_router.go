@@ -18,7 +18,7 @@ func ToddlerRouter(db *gorm.DB, app *fiber.App, s3 *services.S3Service, predict 
 		toddlerHandler = handlers.NewToddlerHandler(toddlerService)
 	)
 
-	r := app.Group("/api/toddlers")
+	r := app.Group("/api/v1/toddlers")
 
 	r.Use(middlewares.JWTAuth())
 

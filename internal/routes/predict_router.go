@@ -17,7 +17,7 @@ func PredictRouter(db *gorm.DB, app *fiber.App, mlAPIURL string) {
 		predictHandler = handlers.NewPredictHandler(predictService)
 	)
 
-	r := app.Group("/api/predicts")
+	r := app.Group("/api/v1/predicts")
 
 	r.Use(middlewares.JWTAuth())
 

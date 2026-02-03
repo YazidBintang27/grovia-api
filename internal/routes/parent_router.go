@@ -17,7 +17,7 @@ func ParentRouter(db *gorm.DB, app *fiber.App) {
 		parentHandler = handlers.NewParentHandler(parentService)
 	)
 
-	r := app.Group("/api/parents")
+	r := app.Group("/api/v1/parents")
 
 	r.Use(middlewares.JWTAuth())
 

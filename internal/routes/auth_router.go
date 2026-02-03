@@ -16,7 +16,7 @@ func AuthRouter(db *gorm.DB, app *fiber.App) {
 		authHandler = handlers.NewAuthHandler(authService)
 	)
 
-	public := app.Group("/api/auth")
+	public := app.Group("/api/v1/auth")
 
 	public.Post("/login", authHandler.Login)
 	public.Post("/reset-password", authHandler.ResetPassword)
