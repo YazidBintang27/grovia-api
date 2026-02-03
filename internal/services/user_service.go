@@ -4,7 +4,6 @@ import (
 	"context"
 	"grovia/internal/dto/requests"
 	"grovia/internal/dto/responses"
-	"grovia/internal/models"
 	"grovia/internal/repositories"
 	"grovia/pkg"
 	"math"
@@ -49,22 +48,7 @@ func (u *userService) GetUserById(targetUserID int, accesorRole string) (*respon
 		return nil, pkg.NewNotFoundError("User tidak ditemukan")
 	}
 
-	response := &responses.UserResponse{
-		ID:             user.ID,
-		LocationID:     user.LocationID,
-		Name:           user.Name,
-		PhoneNumber:    user.PhoneNumber,
-		Address:        user.Address,
-		Nik:            user.Nik,
-		ProfilePicture: user.ProfilePicture,
-		Role:           user.Role,
-		IsActive:       user.IsActive,
-		CreatedBy:      user.CreatedBy,
-		CreatedAt:      user.CreatedAt,
-		UpdatedAt:      user.UpdatedAt,
-	}
-
-	return response, nil
+	return responses.FromModelUser(*user), nil
 }
 
 // GetUsersByRole implements UserService.
@@ -99,24 +83,6 @@ func (u *userService) GetUsersByRole(requesterRole, name, pageStr, limitStr stri
 
 	totalPage := int(math.Ceil(float64(total) / float64(limit)))
 
-	var result []responses.UserResponse
-	for _, v := range users {
-		result = append(result, responses.UserResponse{
-			ID:             v.ID,
-			LocationID:     v.LocationID,
-			Name:           v.Name,
-			PhoneNumber:    v.PhoneNumber,
-			Address:        v.Address,
-			Nik:            v.Nik,
-			ProfilePicture: v.ProfilePicture,
-			Role:           v.Role,
-			IsActive:       v.IsActive,
-			CreatedBy:      v.CreatedBy,
-			CreatedAt:      v.CreatedAt,
-			UpdatedAt:      v.UpdatedAt,
-		})
-	}
-
 	meta := responses.PaginationMeta{
 		Page:      page,
 		Limit:     limit,
@@ -124,7 +90,7 @@ func (u *userService) GetUsersByRole(requesterRole, name, pageStr, limitStr stri
 		TotalPage: totalPage,
 	}
 
-	return result, &meta, nil
+	return responses.FromModelUserList(users), &meta, nil
 }
 
 // DeleteUserByID implements UserService.
@@ -183,18 +149,9 @@ func (u *userService) CreateUser(ctx context.Context, req requests.CreateUserReq
 		location = locationID
 	}
 
-	userMapping := models.User{
-		LocationID:     location,
-		Name:           req.Name,
-		PhoneNumber:    req.PhoneNumber,
-		Address:        req.Address,
-		Nik:            req.Nik,
-		ProfilePicture: url,
-		Role:           req.Role,
-		IsActive:       true,
-		Password:       hashedPassword,
-		CreatedBy:      createdBy,
-	}
+	userMapping := req.ToModel(hashedPassword, url, createdBy)
+
+	userMapping.LocationID = location
 
 	user, err := u.repo.CreateUser(&userMapping)
 
@@ -202,22 +159,7 @@ func (u *userService) CreateUser(ctx context.Context, req requests.CreateUserReq
 		return nil, pkg.NewInternalServerError("Gagal membuat user")
 	}
 
-	response := responses.UserResponse{
-		ID:             user.ID,
-		LocationID:     location,
-		Name:           user.Name,
-		PhoneNumber:    user.PhoneNumber,
-		Address:        user.Address,
-		Nik:            user.Nik,
-		ProfilePicture: user.ProfilePicture,
-		Role:           user.Role,
-		IsActive:       user.IsActive,
-		CreatedBy:      user.CreatedBy,
-		CreatedAt:      user.CreatedAt,
-		UpdatedAt:      user.UpdatedAt,
-	}
-
-	return &response, nil
+	return responses.FromModelUser(*user), nil
 }
 
 // DeleteUser implements UserService.
@@ -236,22 +178,7 @@ func (u *userService) GetCurrentUser(id int) (*responses.UserResponse, error) {
 		return nil, pkg.NewNotFoundError("User tidak ditemukan")
 	}
 
-	response := &responses.UserResponse{
-		ID:             user.ID,
-		LocationID:     user.LocationID,
-		Name:           user.Name,
-		PhoneNumber:    user.PhoneNumber,
-		Address:        user.Address,
-		Nik:            user.Nik,
-		ProfilePicture: user.ProfilePicture,
-		Role:           user.Role,
-		IsActive:       user.IsActive,
-		CreatedBy:      user.CreatedBy,
-		CreatedAt:      user.CreatedAt,
-		UpdatedAt:      user.UpdatedAt,
-	}
-
-	return response, nil
+	return responses.FromModelUser(*user), nil
 }
 
 // UpdateCurrentUser implements UserService.
@@ -259,59 +186,32 @@ func (u *userService) UpdateCurrentUser(ctx context.Context, id int, req request
 	if err := pkg.ValidateStruct(req); err != nil {
 		return nil, pkg.NewBadRequestError(err.Error())
 	}
-
 	var url string
+	var hashedPassword string
 	var err error
 
-	if req.ProfilePicture != nil && req.ProfilePicture.Filename != "" && req.ProfilePicture.Size > 0 {
+	if req.ProfilePicture != nil && req.ProfilePicture.Filename != "" {
 		url, err = u.s3.UploadFile(ctx, req.ProfilePicture, "users")
 		if err != nil {
 			return nil, pkg.NewInternalServerError("Gagal upload foto profil")
 		}
 	}
 
-	userMapping := models.User{}
-	if req.Name != nil {
-		userMapping.Name = *req.Name
-	}
-	if req.PhoneNumber != nil {
-		userMapping.PhoneNumber = *req.PhoneNumber
-	}
-	if req.Address != nil {
-		userMapping.Address = *req.Address
-	}
-	if req.Nik != nil {
-		userMapping.Nik = *req.Nik
-	}
-	if url != "" {
-		userMapping.ProfilePicture = url
-	}
 	if req.Password != nil {
-		hashedPassword, err := pkg.HashPassword(*req.Password)
+		hashedPassword, err = pkg.HashPassword(*req.Password)
 		if err != nil {
 			return nil, pkg.NewInternalServerError("Gagal memproses password")
 		}
-		userMapping.Password = hashedPassword
 	}
+
+	userMapping := req.ToUpdateModel(url, hashedPassword)
 
 	user, err := u.repo.UpdateUser(id, &userMapping)
 	if err != nil {
 		return nil, pkg.NewInternalServerError("Gagal update user")
 	}
 
-	return &responses.UserResponse{
-		ID:             user.ID,
-		LocationID:     user.LocationID,
-		Name:           user.Name,
-		PhoneNumber:    user.PhoneNumber,
-		Address:        user.Address,
-		Nik:            user.Nik,
-		ProfilePicture: user.ProfilePicture,
-		Role:           user.Role,
-		CreatedBy:      user.CreatedBy,
-		CreatedAt:      user.CreatedAt,
-		UpdatedAt:      user.UpdatedAt,
-	}, nil
+	return responses.FromModelUser(*user), nil
 }
 
 // UpdateUserByID implements UserService.
@@ -337,63 +237,31 @@ func (u *userService) UpdateUserByID(
 	}
 
 	var url string
+	var hashedPassword string
 	var err error
 
-	if req.ProfilePicture != nil && req.ProfilePicture.Filename != "" && req.ProfilePicture.Size > 0 {
+	if req.ProfilePicture != nil && req.ProfilePicture.Filename != "" {
 		url, err = u.s3.UploadFile(ctx, req.ProfilePicture, "users")
 		if err != nil {
 			return nil, pkg.NewInternalServerError("Gagal upload foto profil")
 		}
 	}
 
-	userMapping := models.User{}
-	if req.Name != nil {
-		userMapping.Name = *req.Name
-	}
-	if req.LocationID != nil {
-		userMapping.LocationID = *req.LocationID
-	}
-	if req.PhoneNumber != nil {
-		userMapping.PhoneNumber = *req.PhoneNumber
-	}
-	if req.Address != nil {
-		userMapping.Address = *req.Address
-	}
-	if req.Nik != nil {
-		userMapping.Nik = *req.Nik
-	}
-	if req.Role != nil {
-		userMapping.Role = *req.Role
-	}
-	if url != "" {
-		userMapping.ProfilePicture = url
-	}
 	if req.Password != nil {
-		hashedPassword, err := pkg.HashPassword(*req.Password)
+		hashedPassword, err = pkg.HashPassword(*req.Password)
 		if err != nil {
 			return nil, pkg.NewInternalServerError("Gagal memproses password")
 		}
-		userMapping.Password = hashedPassword
 	}
+
+	userMapping := req.ToUpdateModel(url, hashedPassword)
 
 	user, err := u.repo.UpdateUser(targetUserID, &userMapping)
 	if err != nil {
 		return nil, pkg.NewInternalServerError("Gagal update user")
 	}
 
-	return &responses.UserResponse{
-		ID:             user.ID,
-		LocationID:     user.LocationID,
-		Name:           user.Name,
-		PhoneNumber:    user.PhoneNumber,
-		Address:        user.Address,
-		Nik:            user.Nik,
-		ProfilePicture: user.ProfilePicture,
-		Role:           user.Role,
-		CreatedBy:      user.CreatedBy,
-		CreatedAt:      user.CreatedAt,
-		UpdatedAt:      user.UpdatedAt,
-	}, nil
+	return responses.FromModelUser(*user), nil
 }
 
 func (u *userService) rolePermission(creatorRole, targetRole string) bool {

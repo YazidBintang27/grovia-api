@@ -8,7 +8,6 @@ import (
 	"grovia/pkg"
 	"math"
 	"strconv"
-	"strings"
 )
 
 type ParentService interface {
@@ -30,17 +29,7 @@ func (p *parentService) CreateParent(req requests.CreateParentRequest, userID in
 		return nil, pkg.NewBadRequestError(err.Error())
 	}
 
-	parentMapping := models.Parent{
-		CreatedByID: userID,
-		UpdatedByID: userID,
-		DeletedByID: nil,
-		Name:        req.Name,
-		PhoneNumber: req.PhoneNumber,
-		Address:     req.Address,
-		Nik:         req.Nik,
-		Job:         req.Job,
-		LocationID:  req.LocationID,
-	}
+	parentMapping := req.ToModel(userID)
 
 	parent, err := p.repo.CreateParent(&parentMapping)
 
@@ -48,21 +37,7 @@ func (p *parentService) CreateParent(req requests.CreateParentRequest, userID in
 		return nil, pkg.NewInternalServerError("Gagal membuat parent")
 	}
 
-	parentResp := responses.ParentResponse{
-		ID:          parent.ID,
-		LocationID:  parent.LocationID,
-		CreatedByID: parent.CreatedByID,
-		UpdatedByID: parent.UpdatedByID,
-		Name:        parent.Name,
-		PhoneNumber: parent.PhoneNumber,
-		Address:     parent.Address,
-		Nik:         parent.Nik,
-		Job:         parent.Job,
-		CreatedAt:   parent.CreatedAt,
-		UpdatedAt:   parent.UpdatedAt,
-	}
-
-	return &parentResp, nil
+	return responses.FromModelParent(*parent), nil
 }
 
 func (p *parentService) GetAllParentAllLocation(name, pageStr, limitStr string) ([]responses.ParentResponse, *responses.PaginationMeta, error) {
@@ -87,23 +62,6 @@ func (p *parentService) GetAllParentAllLocation(name, pageStr, limitStr string) 
 
 	totalPage := int(math.Ceil(float64(total) / float64(limit)))
 
-	var parentResponses []responses.ParentResponse
-	for _, v := range parents {
-		parentResponses = append(parentResponses, responses.ParentResponse{
-			ID:          v.ID,
-			LocationID:  v.LocationID,
-			CreatedByID: v.CreatedByID,
-			UpdatedByID: v.UpdatedByID,
-			Name:        v.Name,
-			PhoneNumber: v.PhoneNumber,
-			Address:     v.Address,
-			Nik:         v.Nik,
-			Job:         v.Job,
-			CreatedAt:   v.CreatedAt,
-			UpdatedAt:   v.UpdatedAt,
-		})
-	}
-
 	meta := responses.PaginationMeta{
 		Page:      page,
 		Limit:     limit,
@@ -111,7 +69,7 @@ func (p *parentService) GetAllParentAllLocation(name, pageStr, limitStr string) 
 		TotalPage: totalPage,
 	}
 
-	return parentResponses, &meta, nil
+	return responses.FromModelParentList(parents), &meta, nil
 }
 
 func (p *parentService) CheckPhoneExists(phoneNumber string) (*models.Parent, error) {
@@ -152,24 +110,6 @@ func (p *parentService) GetAllParent(locationID int, name, pageStr, limitStr str
 
 	totalPage := int(math.Ceil(float64(total) / float64(limit)))
 
-	var parentResponse []responses.ParentResponse
-
-	for _, v := range parents {
-		parentResponse = append(parentResponse, responses.ParentResponse{
-			ID:          v.ID,
-			LocationID:  v.LocationID,
-			CreatedByID: v.CreatedByID,
-			UpdatedByID: v.UpdatedByID,
-			Name:        v.Name,
-			PhoneNumber: v.PhoneNumber,
-			Address:     v.Address,
-			Nik:         v.Nik,
-			Job:         v.Job,
-			CreatedAt:   v.CreatedAt,
-			UpdatedAt:   v.UpdatedAt,
-		})
-	}
-
 	meta := responses.PaginationMeta{
 		Page:      page,
 		Limit:     limit,
@@ -177,7 +117,7 @@ func (p *parentService) GetAllParent(locationID int, name, pageStr, limitStr str
 		TotalPage: totalPage,
 	}
 
-	return parentResponse, &meta, nil
+	return responses.FromModelParentList(parents), &meta, nil
 }
 
 func (p *parentService) GetParentByID(id int, locationID int) (*responses.ParentResponse, error) {
@@ -187,41 +127,7 @@ func (p *parentService) GetParentByID(id int, locationID int) (*responses.Parent
 		return nil, pkg.NewNotFoundError("Parent tidak ditemukan")
 	}
 
-	var toddlerResponses []responses.ToddlerResponse
-	for _, t := range parent.Toddlers {
-		toddlerResponses = append(toddlerResponses, responses.ToddlerResponse{
-			ID:                t.ID,
-			ParentID:          t.ParentID,
-			LocationID:        t.LocationID,
-			CreatedByID:       t.CreatedByID,
-			UpdatedByID:       t.UpdatedByID,
-			Name:              t.Name,
-			Birthdate:         t.Birthdate,
-			Sex:               t.Sex,
-			Height:            t.Height,
-			ProfilePicture:    t.ProfilePicture,
-			NutritionalStatus: t.NutritionalStatus,
-			CreatedAt:         t.CreatedAt,
-			UpdatedAt:         t.UpdatedAt,
-		})
-	}
-
-	parentResponses := responses.ParentResponse{
-		ID:          parent.ID,
-		LocationID:  parent.LocationID,
-		CreatedByID: parent.CreatedByID,
-		UpdatedByID: parent.UpdatedByID,
-		Name:        parent.Name,
-		PhoneNumber: parent.PhoneNumber,
-		Address:     parent.Address,
-		Nik:         parent.Nik,
-		Job:         parent.Job,
-		Toddlers:    toddlerResponses,
-		CreatedAt:   parent.CreatedAt,
-		UpdatedAt:   parent.UpdatedAt,
-	}
-
-	return &parentResponses, nil
+	return responses.FromModelParent(*parent), nil
 }
 
 func (p *parentService) UpdateParentByID(id int, locationID, userID int, req requests.UpdateParentRequest) (*responses.ParentResponse, error) {
@@ -229,59 +135,14 @@ func (p *parentService) UpdateParentByID(id int, locationID, userID int, req req
 		return nil, pkg.NewBadRequestError(err.Error())
 	}
 
-	parentMapping := models.Parent{
-		UpdatedByID: userID,
-	}
-
-	if req.Name != nil {
-		trimmed := strings.TrimSpace(*req.Name)
-		parentMapping.Name = trimmed
-	}
-
-	if req.PhoneNumber != nil {
-		phone := strings.TrimSpace(*req.PhoneNumber)
-		parentMapping.PhoneNumber = phone
-	}
-
-	if req.Address != nil {
-		trimmed := strings.TrimSpace(*req.Address)
-		parentMapping.Address = trimmed
-	}
-
-	if req.Nik != nil {
-		nik := strings.TrimSpace(*req.Nik)
-		parentMapping.Nik = nik
-	}
-
-	if req.Job != nil {
-		trimmed := strings.TrimSpace(*req.Job)
-		parentMapping.Job = trimmed
-	}
-
-	if req.LocationID != nil {
-		parentMapping.LocationID = *req.LocationID
-	}
+	parentMapping := req.ToUpdateModel(userID)
 
 	parent, err := p.repo.UpdateParentByID(id, locationID, &parentMapping)
 	if err != nil {
 		return nil, pkg.NewInternalServerError("Gagal update data parent")
 	}
 
-	parentResponse := responses.ParentResponse{
-		ID:          parent.ID,
-		LocationID:  parent.LocationID,
-		CreatedByID: parent.CreatedByID,
-		UpdatedByID: parent.UpdatedByID,
-		Name:        parent.Name,
-		PhoneNumber: parent.PhoneNumber,
-		Address:     parent.Address,
-		Nik:         parent.Nik,
-		Job:         parent.Job,
-		CreatedAt:   parent.CreatedAt,
-		UpdatedAt:   parent.UpdatedAt,
-	}
-
-	return &parentResponse, nil
+	return responses.FromModelParent(*parent), nil
 }
 
 func NewParentService(repo repositories.ParentRepository) ParentService {

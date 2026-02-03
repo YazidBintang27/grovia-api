@@ -27,7 +27,12 @@ func (p *parentRepository) GetAllParentAllLocation(name string, limit, offset in
 	var parents []models.Parent
 	var total int64
 
-	db := p.db.Model(&parents).Where("deleted_at IS NULL")
+	db := p.db.
+		Model(&models.Parent{}).
+		Preload("Toddlers", func(tx *gorm.DB) *gorm.DB {
+			return tx.Where("deleted_at IS NULL")
+		}).
+		Where("parents.deleted_at IS NULL")
 
 	if strings.TrimSpace(name) != "" {
 		normalizedName := strings.ToLower(strings.ReplaceAll(name, " ", ""))
@@ -107,7 +112,7 @@ func (p *parentRepository) DeleteParentByID(id, locationID, userID int) error {
 		}).Error; err != nil {
 		return err
 	}
-	
+
 	return nil
 }
 
@@ -116,9 +121,13 @@ func (p *parentRepository) GetAllParent(locationID, limit, offset int, name stri
 	var parents []models.Parent
 	var total int64
 
-	db := p.db.Model(&parents).Where("deleted_at IS NULL")
-
-	db = db.Where("location_id = ?", locationID)
+	db := p.db.
+		Model(&models.Parent{}).
+		Preload("Toddlers", func(tx *gorm.DB) *gorm.DB {
+			return tx.Where("deleted_at IS NULL")
+		}).
+		Where("parents.deleted_at IS NULL").
+		Where("location_id = ?", locationID)
 
 	if strings.TrimSpace(name) != "" {
 		normalizedName := strings.ToLower(strings.ReplaceAll(name, " ", ""))
