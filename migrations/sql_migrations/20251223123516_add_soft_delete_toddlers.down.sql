@@ -1,15 +1,15 @@
--- +migrate Up
+-- +migrate Down
 
 BEGIN;
 
 DROP INDEX IF EXISTS ux_toddlers_active;
 
 ALTER TABLE toddlers
-DROP CONSTRAINT fk_toddlers_deleted_by,
-DROP CONSTRAINT fk_toddlers_created_by,
-DROP CONSTRAINT fk_toddlers_updated_by,
-DROP CONSTRAINT fk_toddlers_parent,
-DROP CONSTRAINT fk_toddlers_location;
+DROP CONSTRAINT IF EXISTS fk_toddlers_deleted_by,
+DROP CONSTRAINT IF EXISTS fk_toddlers_created_by,
+DROP CONSTRAINT IF EXISTS fk_toddlers_updated_by,
+DROP CONSTRAINT IF EXISTS fk_toddlers_parent,
+DROP CONSTRAINT IF EXISTS fk_toddlers_location;
 
 ALTER TABLE toddlers
 DROP COLUMN deleted_at,

@@ -27,7 +27,7 @@ func ParentRouter(db *gorm.DB, app *fiber.App) {
 
 	r.Get("/", parentHandler.GetAllParent)
 
-	r.Get("/all", parentHandler.GetAllPredictAllLocation)
+	r.Get("/all", parentHandler.GetAllParentAllLocation)
 
 	r.Get("/:id", parentHandler.GetParentByID)
 

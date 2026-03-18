@@ -19,6 +19,18 @@ func NewToddlerHandler(service services.ToddlerService) *ToddlerHandler {
 	return &ToddlerHandler{service: service}
 }
 
+// CreateToddler godoc
+// @Summary Create new toddler
+// @Description Create a new toddler record
+// @Tags Toddlers
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body requests.CreateToddlerRequest true "Toddler data"
+// @Success 201 {object} responses.BaseResponse
+// @Failure 400 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Router /toddlers [post]
 func (t *ToddlerHandler) CreateToddler(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	locationID := ctx.Locals("location_id").(int)
@@ -66,6 +78,18 @@ func (t *ToddlerHandler) CreateToddler(ctx *fiber.Ctx) error {
 	})
 }
 
+// CreateToddlerWithParent godoc
+// @Summary Create toddler with parent
+// @Description Create a new toddler record along with parent data
+// @Tags Toddlers
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body requests.CreateToddlerWithParentRequest true "Toddler and parent data"
+// @Success 201 {object} responses.BaseResponse
+// @Failure 400 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Router /toddlers/with-parent [post]
 func (t *ToddlerHandler) CreateToddlerWithParent(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	locationID := ctx.Locals("location_id").(int)
@@ -116,6 +140,19 @@ func (t *ToddlerHandler) CreateToddlerWithParent(ctx *fiber.Ctx) error {
 	})
 }
 
+// GetAllToddler godoc
+// @Summary Get all toddlers
+// @Description Get list of all toddlers in location
+// @Tags Toddlers
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param name query string false "Search by name"
+// @Param page query int false "Page number"
+// @Param limit query int false "Items per page"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Router /toddlers [get]
 func (t *ToddlerHandler) GetAllToddler(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	locationID := ctx.Locals("location_id").(int)
@@ -150,6 +187,19 @@ func (t *ToddlerHandler) GetAllToddler(ctx *fiber.Ctx) error {
 	})
 }
 
+// GetToddlerByID godoc
+// @Summary Get toddler by ID
+// @Description Get toddler details by ID
+// @Tags Toddlers
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Toddler ID"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 400 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Failure 404 {object} responses.BaseResponse
+// @Router /toddlers/{id} [get]
 func (t *ToddlerHandler) GetToddlerByID(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	locationID := ctx.Locals("location_id").(int)
@@ -195,6 +245,22 @@ func (t *ToddlerHandler) GetToddlerByID(ctx *fiber.Ctx) error {
 	})
 }
 
+// UpdateToddlerByID godoc
+// @Summary Update toddler by ID
+// @Description Update toddler data by ID with prediction
+// @Tags Toddlers
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Toddler ID"
+// @Param name formData string false "Toddler name"
+// @Param birthdate formData string false "Birthdate (RFC3339)"
+// @Param profilePicture formData file false "Profile picture"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 400 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Failure 404 {object} responses.BaseResponse
+// @Router /toddlers/{id} [patch]
 func (t *ToddlerHandler) UpdateToddlerByID(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	locationID := ctx.Locals("location_id").(int)
@@ -278,6 +344,22 @@ func (t *ToddlerHandler) UpdateToddlerByID(ctx *fiber.Ctx) error {
 	})
 }
 
+// UpdateToddlerByIDWithoutPredict godoc
+// @Summary Update toddler without prediction
+// @Description Update toddler data by ID without triggering prediction
+// @Tags Toddlers
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Toddler ID"
+// @Param name formData string false "Toddler name"
+// @Param birthdate formData string false "Birthdate (RFC3339)"
+// @Param profilePicture formData file false "Profile picture"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 400 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Failure 404 {object} responses.BaseResponse
+// @Router /toddlers/{id}/without-predict [patch]
 func (t *ToddlerHandler) UpdateToddlerByIDWithoutPredict(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	locationID := ctx.Locals("location_id").(int)
@@ -358,6 +440,19 @@ func (t *ToddlerHandler) UpdateToddlerByIDWithoutPredict(ctx *fiber.Ctx) error {
 	})
 }
 
+// DeleteToddlerByID godoc
+// @Summary Delete toddler by ID
+// @Description Delete toddler by ID
+// @Tags Toddlers
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Toddler ID"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 400 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Failure 404 {object} responses.BaseResponse
+// @Router /toddlers/{id} [delete]
 func (t *ToddlerHandler) DeleteToddlerByID(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	locationID := ctx.Locals("location_id").(int)
@@ -403,6 +498,19 @@ func (t *ToddlerHandler) DeleteToddlerByID(ctx *fiber.Ctx) error {
 	})
 }
 
+// CheckToddlerExists godoc
+// @Summary Check if toddler exists
+// @Description Check if toddler exists by name and phone number
+// @Tags Toddlers
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param name query string true "Toddler name"
+// @Param phone_number query string true "Parent phone number"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 400 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Router /toddlers/check [get]
 func (t *ToddlerHandler) CheckToddlerExists(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 
@@ -454,6 +562,19 @@ func (t *ToddlerHandler) CheckToddlerExists(ctx *fiber.Ctx) error {
 	})
 }
 
+// GetAllToddlerAllLocation godoc
+// @Summary Get all toddlers from all locations
+// @Description Get list of all toddlers across all locations (Admin only)
+// @Tags Toddlers
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param name query string false "Search by name"
+// @Param page query int false "Page number"
+// @Param limit query int false "Items per page"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Router /toddlers/all-locations [get]
 func (t *ToddlerHandler) GetAllToddlerAllLocation(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	name := ctx.Query("name")
