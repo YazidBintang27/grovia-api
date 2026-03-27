@@ -18,6 +18,23 @@ func NewUserHandler(service services.UserService) *UserHandler {
 	return &UserHandler{service: service}
 }
 
+// CreateUser godoc
+// @Summary Create new user
+// @Description Create a new user (Admin and Kepala Posyandu only)
+// @Tags Users
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param name formData string true "User name"
+// @Param phoneNumber formData string true "Phone number"
+// @Param password formData string true "Password"
+// @Param role formData string true "User role"
+// @Param profilePicture formData file false "Profile picture"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 400 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Failure 403 {object} responses.BaseResponse
+// @Router /users [post]
 func (u *UserHandler) CreateUser(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	role := ctx.Locals("role").(string)
@@ -68,6 +85,16 @@ func (u *UserHandler) CreateUser(ctx *fiber.Ctx) error {
 	})
 }
 
+// GetCurrentUser godoc
+// @Summary Get current user profile
+// @Description Get logged in user profile
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Router /users/current [get]
 func (u *UserHandler) GetCurrentUser(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 
@@ -97,6 +124,20 @@ func (u *UserHandler) GetCurrentUser(ctx *fiber.Ctx) error {
 	})
 }
 
+// GetUserByID godoc
+// @Summary Get user by ID
+// @Description Get user details by ID (Admin and Kepala Posyandu only)
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "User ID"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 400 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Failure 403 {object} responses.BaseResponse
+// @Failure 404 {object} responses.BaseResponse
+// @Router /users/{id} [get]
 func (u *UserHandler) GetUserByID(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	role := ctx.Locals("role")
@@ -141,6 +182,20 @@ func (u *UserHandler) GetUserByID(ctx *fiber.Ctx) error {
 	})
 }
 
+// GetUsersByRole godoc
+// @Summary Get users by role
+// @Description Get list of users filtered by role (Admin and Kepala Posyandu only)
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param name query string false "Search by name"
+// @Param page query int false "Page number"
+// @Param limit query int false "Items per page"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Failure 403 {object} responses.BaseResponse
+// @Router /users [get]
 func (u *UserHandler) GetUsersByRole(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	locationID := ctx.Locals("location_id").(int)
@@ -176,6 +231,21 @@ func (u *UserHandler) GetUsersByRole(ctx *fiber.Ctx) error {
 	})
 }
 
+// UpdateCurrentUser godoc
+// @Summary Update current user profile
+// @Description Update logged in user profile
+// @Tags Users
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param name formData string false "User name"
+// @Param phoneNumber formData string false "Phone number"
+// @Param password formData string false "New password"
+// @Param profilePicture formData file false "Profile picture"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 400 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Router /users/current [patch]
 func (u *UserHandler) UpdateCurrentUser(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 
@@ -223,6 +293,24 @@ func (u *UserHandler) UpdateCurrentUser(ctx *fiber.Ctx) error {
 	})
 }
 
+// UpdateUserByID godoc
+// @Summary Update user by ID
+// @Description Update user data by ID (Admin and Kepala Posyandu only)
+// @Tags Users
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "User ID"
+// @Param name formData string false "User name"
+// @Param phoneNumber formData string false "Phone number"
+// @Param password formData string false "New password"
+// @Param profilePicture formData file false "Profile picture"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 400 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Failure 403 {object} responses.BaseResponse
+// @Failure 404 {object} responses.BaseResponse
+// @Router /users/{id} [patch]
 func (u *UserHandler) UpdateUserByID(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	role := ctx.Locals("role")
@@ -285,6 +373,16 @@ func (u *UserHandler) UpdateUserByID(ctx *fiber.Ctx) error {
 	})
 }
 
+// DeleteCurrentUser godoc
+// @Summary Delete current user
+// @Description Delete logged in user account
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Router /users/current [delete]
 func (u *UserHandler) DeleteCurrentUser(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 
@@ -311,6 +409,20 @@ func (u *UserHandler) DeleteCurrentUser(ctx *fiber.Ctx) error {
 	})
 }
 
+// DeleteUserByID godoc
+// @Summary Delete user by ID
+// @Description Delete user by ID (Admin and Kepala Posyandu only)
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "User ID"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 400 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Failure 403 {object} responses.BaseResponse
+// @Failure 404 {object} responses.BaseResponse
+// @Router /users/{id} [delete]
 func (u *UserHandler) DeleteUserByID(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	role := ctx.Locals("role")

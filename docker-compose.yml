@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: grovia-api-db
+    env_file:
+      - .env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - grovia-backend
+
+volumes:
+  pgdata:
+
+networks:
+  grovia-backend:
+    driver: bridge

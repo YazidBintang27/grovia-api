@@ -15,7 +15,7 @@ func LocationRouter(app *fiber.App, db *gorm.DB, s3 *services.S3Service) {
 	service := services.NewLocationService(repo, s3)
 	handler := handlers.NewLocationHandler(service)
 
-	r := app.Group("/api/locations")
+	r := app.Group("/api/v1/locations")
 
 	r.Use(middlewares.JWTAuth())
 

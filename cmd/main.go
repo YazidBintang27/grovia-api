@@ -6,6 +6,7 @@ import (
 	"grovia/internal/repositories"
 	"grovia/internal/routes"
 	"grovia/internal/services"
+	"grovia/migrations"
 
 	// "grovia/migrations"
 	"grovia/migrations/seeds"
@@ -13,7 +14,30 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"gorm.io/gorm"
+
+	fiberSwagger "github.com/swaggo/fiber-swagger"
+
+	_ "grovia/docs"
 )
+
+// @title Grovia API
+// @version 1.0
+// @description API documentation for Grovia App
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.email support@grovia.com
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host localhost:8080
+// @BasePath /api/v1
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
 
 func main() {
 	firebase.InitFirebase()
@@ -23,10 +47,10 @@ func main() {
 	configs.DBInitiator()
 	db := configs.DBConnections
 
-	// migrations.Initiator(db)
+	migrations.Initiator(db)
 	// seeds.SeedDefaultLocation(db)
 	seeds.SeedAdmin(db)
-	RunAllSeeds(db)
+	// RunAllSeeds(db)
 
 	s3 := services.NewS3Service(cfg.Aws)
 	predictRepo := repositories.NewPredictRepository(db)
@@ -37,6 +61,8 @@ func main() {
 
 func InitiateRoutes(db *gorm.DB, s3 *services.S3Service, predict services.PredictService, mlAPIURL string) {
 	app := fiber.New()
+
+	app.Get("/swagger/*", fiberSwagger.WrapHandler)
 
 	routes.AuthRouter(db, app)
 	routes.LocationRouter(app, db, s3)

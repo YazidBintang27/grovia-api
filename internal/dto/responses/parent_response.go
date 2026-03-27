@@ -1,6 +1,9 @@
 package responses
 
-import "time"
+import (
+	"grovia/internal/models"
+	"time"
+)
 
 type ParentResponse struct {
 	ID          int               `json:"id"`
@@ -15,4 +18,30 @@ type ParentResponse struct {
 	Toddlers    []ToddlerResponse `json:"toddlers"`
 	CreatedAt   time.Time         `json:"createdAt"`
 	UpdatedAt   time.Time         `json:"updatedAt"`
+}
+
+func FromModelParent(parent models.Parent) *ParentResponse {
+	toddlerResponses := FromModelToddlerList(parent.Toddlers)
+	return &ParentResponse{
+		ID:          parent.ID,
+		LocationID:  parent.LocationID,
+		CreatedByID: parent.CreatedByID,
+		UpdatedByID: parent.UpdatedByID,
+		Name:        parent.Name,
+		PhoneNumber: parent.PhoneNumber,
+		Address:     parent.Address,
+		Nik:         parent.Nik,
+		Job:         parent.Job,
+		Toddlers:    toddlerResponses,
+		CreatedAt:   parent.CreatedAt,
+		UpdatedAt:   parent.UpdatedAt,
+	}
+}
+
+func FromModelParentList(parents []models.Parent) []ParentResponse {
+	var parentResponse []ParentResponse
+	for _, v := range parents {
+		parentResponse = append(parentResponse, *FromModelParent(v))
+	}
+	return parentResponse
 }

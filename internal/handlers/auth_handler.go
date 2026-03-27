@@ -17,6 +17,16 @@ func NewAuthHandler(service services.AuthService) *AuthHandler {
 	return &AuthHandler{service: service}
 }
 
+// ResetPassword godoc
+// @Summary Reset password
+// @Description Reset user password by phone number
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param request body requests.ResetPasswordRequest true "Reset password request"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 400 {object} responses.BaseResponse
+// @Router /auth/reset-password [post]
 func (a *AuthHandler) ResetPassword(ctx *fiber.Ctx) error {
 	var req requests.ResetPasswordRequest
 
@@ -53,6 +63,16 @@ func (a *AuthHandler) ResetPassword(ctx *fiber.Ctx) error {
 	})
 }
 
+// Login godoc
+// @Summary User login
+// @Description Login with phone number and password
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param request body requests.LoginRequest true "Login credentials"
+// @Success 200 {object} responses.BaseResponse{data=responses.LoginResponse}
+// @Failure 400 {object} responses.BaseResponse
+// @Router /auth/login [post]
 func (a *AuthHandler) Login(ctx *fiber.Ctx) error {
 	var req requests.LoginRequest
 
@@ -89,6 +109,16 @@ func (a *AuthHandler) Login(ctx *fiber.Ctx) error {
 	})
 }
 
+// RefreshToken godoc
+// @Summary Refresh access token
+// @Description Get new access token using refresh token
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param request body requests.RefreshTokenRequest true "Refresh token"
+// @Success 200 {object} responses.BaseResponse{data=responses.LoginResponse}
+// @Failure 400 {object} responses.BaseResponse
+// @Router /auth/refresh-token [post]
 func (a *AuthHandler) RefreshToken(ctx *fiber.Ctx) error {
 	var req requests.RefreshTokenRequest
 	if err := ctx.BodyParser(&req); err != nil {

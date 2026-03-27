@@ -4,7 +4,6 @@ import (
 	"context"
 	"grovia/internal/dto/requests"
 	"grovia/internal/dto/responses"
-	"grovia/internal/models"
 	"grovia/internal/repositories"
 	"grovia/pkg"
 	"log"
@@ -30,11 +29,6 @@ func (l *locationService) CreateLocation(ctx context.Context, req requests.Locat
 		return nil, pkg.NewBadRequestError(err.Error())
 	}
 
-	locationMapping := models.Location{
-		Name:    req.Name,
-		Address: req.Address,
-	}
-
 	var url string
 	var err error
 	if req.Picture != nil {
@@ -44,9 +38,7 @@ func (l *locationService) CreateLocation(ctx context.Context, req requests.Locat
 		}
 	}
 
-	if url != "" {
-		locationMapping.Picture = url
-	}
+	locationMapping := req.ToModel(url)
 
 	location, err := l.repo.CreateLocation(&locationMapping)
 
@@ -54,16 +46,7 @@ func (l *locationService) CreateLocation(ctx context.Context, req requests.Locat
 		return nil, pkg.NewInternalServerError("Gagal membuat lokasi")
 	}
 
-	locationResponse := responses.LocationResponse{
-		ID:        location.ID,
-		Name:      location.Name,
-		Address:   location.Address,
-		Picture:   location.Picture,
-		CreatedAt: location.CreatedAt,
-		UpdatedAt: location.UpdatedAt,
-	}
-
-	return &locationResponse, nil
+	return responses.FromModelLocation(*location), nil
 }
 
 func (l *locationService) DeleteLocationByID(id, userID int) error {
@@ -96,19 +79,6 @@ func (l *locationService) GetAllLocation(name, pageStr, limitStr string) ([]resp
 		return nil, nil, pkg.NewInternalServerError("Gagal mengambil data lokasi")
 	}
 
-	var locationsResponse []responses.LocationResponse
-
-	for _, v := range locations {
-		locationsResponse = append(locationsResponse, responses.LocationResponse{
-			ID:        v.ID,
-			Name:      v.Name,
-			Address:   v.Address,
-			Picture:   v.Picture,
-			CreatedAt: v.CreatedAt,
-			UpdatedAt: v.UpdatedAt,
-		})
-	}
-
 	meta := responses.PaginationMeta{
 		Page:      page,
 		Limit:     limit,
@@ -116,7 +86,7 @@ func (l *locationService) GetAllLocation(name, pageStr, limitStr string) ([]resp
 		TotalPage: totalPage,
 	}
 
-	return locationsResponse, &meta, nil
+	return responses.FromModelLocationList(locations), &meta, nil
 }
 
 func (l *locationService) GetLocationByID(id int) (*responses.LocationResponse, error) {
@@ -126,16 +96,7 @@ func (l *locationService) GetLocationByID(id int) (*responses.LocationResponse, 
 		return nil, pkg.NewNotFoundError("Lokasi tidak ditemukan")
 	}
 
-	locationResponse := responses.LocationResponse{
-		ID:        location.ID,
-		Name:      location.Name,
-		Address:   location.Address,
-		Picture:   location.Picture,
-		CreatedAt: location.CreatedAt,
-		UpdatedAt: location.UpdatedAt,
-	}
-
-	return &locationResponse, nil
+	return responses.FromModelLocation(*location), nil
 }
 
 func (l *locationService) UpdateLocationByID(ctx context.Context, id, userID int, req requests.LocationRequest) (*responses.LocationResponse, error) {
@@ -154,30 +115,14 @@ func (l *locationService) UpdateLocationByID(ctx context.Context, id, userID int
 
 	log.Println("[DEBUG] Location Picture URL:", url)
 
-	locationMapping := models.Location{
-		Name:    req.Name,
-		Address: req.Address,
-	}
-
-	if url != "" {
-		locationMapping.Picture = url
-	}
+	locationMapping := req.ToModel(url)
 
 	location, err := l.repo.UpdateLocationByID(id, &locationMapping)
 	if err != nil {
 		return nil, pkg.NewInternalServerError("Gagal update data lokasi")
 	}
 
-	locationResponse := responses.LocationResponse{
-		ID:        location.ID,
-		Name:      location.Name,
-		Address:   location.Address,
-		Picture:   location.Picture,
-		CreatedAt: location.CreatedAt,
-		UpdatedAt: location.UpdatedAt,
-	}
-
-	return &locationResponse, nil
+	return responses.FromModelLocation(*location), nil
 }
 
 func NewLocationService(repo repositories.LocationRepository, s3 *S3Service) LocationService {

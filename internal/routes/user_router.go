@@ -15,7 +15,7 @@ func UserRouter(app *fiber.App, db *gorm.DB, s3 *services.S3Service) {
 	service := services.NewUserService(repo, s3)
 	handler := handlers.NewUserHandler(service)
 
-	r := app.Group("/api/users")
+	r := app.Group("/api/v1/users")
 
 	r.Use(middlewares.JWTAuth())
 

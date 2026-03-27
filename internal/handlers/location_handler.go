@@ -18,6 +18,21 @@ func NewLocationHandler(service services.LocationService) *LocationHandler {
 	return &LocationHandler{service: service}
 }
 
+// CreateLocation godoc
+// @Summary Create new location
+// @Description Create a new location (Admin only)
+// @Tags Locations
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param name formData string true "Location name"
+// @Param address formData string true "Address"
+// @Param picture formData file false "Location picture"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 400 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Failure 403 {object} responses.BaseResponse
+// @Router /locations [post]
 func (l *LocationHandler) CreateLocation(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	role := ctx.Locals("role")
@@ -79,6 +94,20 @@ func (l *LocationHandler) CreateLocation(ctx *fiber.Ctx) error {
 	})
 }
 
+// GetAllLocation godoc
+// @Summary Get all locations
+// @Description Get list of all locations (Admin only)
+// @Tags Locations
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param name query string false "Search by name"
+// @Param page query int false "Page number"
+// @Param limit query int false "Items per page"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Failure 403 {object} responses.BaseResponse
+// @Router /locations [get]
 func (l *LocationHandler) GetAllLocation(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	role := ctx.Locals("role")
@@ -126,6 +155,19 @@ func (l *LocationHandler) GetAllLocation(ctx *fiber.Ctx) error {
 	})
 }
 
+// GetLocationByID godoc
+// @Summary Get location by ID
+// @Description Get location details by ID
+// @Tags Locations
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Location ID"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 400 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Failure 404 {object} responses.BaseResponse
+// @Router /locations/{id} [get]
 func (l *LocationHandler) GetLocationByID(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 
@@ -170,6 +212,23 @@ func (l *LocationHandler) GetLocationByID(ctx *fiber.Ctx) error {
 	})
 }
 
+// UpdateLocationByID godoc
+// @Summary Update location by ID
+// @Description Update location data by ID (Admin only)
+// @Tags Locations
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Location ID"
+// @Param name formData string false "Location name"
+// @Param address formData string false "Address"
+// @Param picture formData file false "Location picture"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 400 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Failure 403 {object} responses.BaseResponse
+// @Failure 404 {object} responses.BaseResponse
+// @Router /locations/{id} [patch]
 func (l *LocationHandler) UpdateLocationByID(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	role := ctx.Locals("role")
@@ -246,6 +305,20 @@ func (l *LocationHandler) UpdateLocationByID(ctx *fiber.Ctx) error {
 	})
 }
 
+// DeleteLocationByID godoc
+// @Summary Delete location by ID
+// @Description Delete location by ID (Admin only)
+// @Tags Locations
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Location ID"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 400 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Failure 403 {object} responses.BaseResponse
+// @Failure 404 {object} responses.BaseResponse
+// @Router /locations/{id} [delete]
 func (l *LocationHandler) DeleteLocationByID(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	role := ctx.Locals("role")

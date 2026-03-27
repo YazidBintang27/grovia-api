@@ -18,6 +18,18 @@ func NewParentHandler(service services.ParentService) *ParentHandler {
 	return &ParentHandler{service: service}
 }
 
+// CreateParent godoc
+// @Summary Create new parent
+// @Description Create a new parent record
+// @Tags Parents
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body requests.CreateParentRequest true "Parent data"
+// @Success 201 {object} responses.BaseResponse
+// @Failure 400 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Router /parents [post]
 func (p *ParentHandler) CreateParent(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	locationID := ctx.Locals("location_id").(int)
@@ -62,6 +74,19 @@ func (p *ParentHandler) CreateParent(ctx *fiber.Ctx) error {
 	})
 }
 
+// GetAllParent godoc
+// @Summary Get all parents
+// @Description Get list of all parents in location
+// @Tags Parents
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param name query string false "Search by name"
+// @Param page query int false "Page number"
+// @Param limit query int false "Items per page"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Router /parents [get]
 func (p *ParentHandler) GetAllParent(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	locationID := ctx.Locals("location_id").(int)
@@ -97,6 +122,19 @@ func (p *ParentHandler) GetAllParent(ctx *fiber.Ctx) error {
 	})
 }
 
+// GetParentByID godoc
+// @Summary Get parent by ID
+// @Description Get parent details by ID
+// @Tags Parents
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Parent ID"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 400 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Failure 404 {object} responses.BaseResponse
+// @Router /parents/{id} [get]
 func (p *ParentHandler) GetParentByID(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	locationID := ctx.Locals("location_id").(int)
@@ -142,6 +180,20 @@ func (p *ParentHandler) GetParentByID(ctx *fiber.Ctx) error {
 	})
 }
 
+// UpdateParentByID godoc
+// @Summary Update parent by ID
+// @Description Update parent data by ID
+// @Tags Parents
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Parent ID"
+// @Param request body requests.UpdateParentRequest true "Parent data"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 400 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Failure 404 {object} responses.BaseResponse
+// @Router /parents/{id} [patch]
 func (p *ParentHandler) UpdateParentByID(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	locationID := ctx.Locals("location_id").(int)
@@ -200,6 +252,19 @@ func (p *ParentHandler) UpdateParentByID(ctx *fiber.Ctx) error {
 	})
 }
 
+// DeleteParentByID godoc
+// @Summary Delete parent by ID
+// @Description Delete parent by ID
+// @Tags Parents
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path int true "Parent ID"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 400 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Failure 404 {object} responses.BaseResponse
+// @Router /parents/{id} [delete]
 func (p *ParentHandler) DeleteParentByID(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 	locationID := ctx.Locals("location_id").(int)
@@ -245,6 +310,19 @@ func (p *ParentHandler) DeleteParentByID(ctx *fiber.Ctx) error {
 	})
 }
 
+
+// CheckPhoneExists godoc
+// @Summary Check if phone number exists
+// @Description Check if phone number is already registered
+// @Tags Parents
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param phone_number query string true "Phone number"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 400 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Router /parents/check-phone [get]
 func (p *ParentHandler) CheckPhoneExists(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 
@@ -297,7 +375,20 @@ func (p *ParentHandler) CheckPhoneExists(ctx *fiber.Ctx) error {
 	})
 }
 
-func (p *ParentHandler) GetAllPredictAllLocation(ctx *fiber.Ctx) error {
+// GetAllPredictAllLocation godoc
+// @Summary Get all parents from all locations
+// @Description Get list of all parents across all locations (Admin only)
+// @Tags Parents
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param name query string false "Search by name"
+// @Param page query int false "Page number"
+// @Param limit query int false "Items per page"
+// @Success 200 {object} responses.BaseResponse
+// @Failure 401 {object} responses.BaseResponse
+// @Router /parents/all-locations [get]
+func (p *ParentHandler) GetAllParentAllLocation(ctx *fiber.Ctx) error {
 	userID, ok := ctx.Locals("user_id").(int)
 
 	name := ctx.Query("name")

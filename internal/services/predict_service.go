@@ -56,23 +56,6 @@ func (p *predictService) GetAllPredictAllLocation(pageStr, limitStr string) ([]r
 
 	totalPage := int(math.Ceil(float64(total) / float64(limit)))
 
-	var predictResponses []responses.PredictResponse
-	for _, v := range predicts {
-		predictResponses = append(predictResponses, responses.PredictResponse{
-			ID:                v.ID,
-			ToddlerID:         v.ToddlerID,
-			CreatedByID:       v.CreatedByID,
-			Name:              v.Name,
-			Height:            v.Height,
-			Age:               v.Age,
-			Sex:               v.Sex,
-			Zscore:            v.Zscore,
-			NutritionalStatus: v.NutritionalStatus,
-			CreatedAt:         v.CreatedAt,
-			UpdatedAt:         v.UpdatedAt,
-		})
-	}
-
 	meta := responses.PaginationMeta{
 		Page:      page,
 		Limit:     limit,
@@ -80,7 +63,7 @@ func (p *predictService) GetAllPredictAllLocation(pageStr, limitStr string) ([]r
 		TotalPage: totalPage,
 	}
 
-	return predictResponses, &meta, nil
+	return responses.FromModelPredictList(predicts), &meta, nil
 }
 
 func (p *predictService) CreateGroupPredict(filePath string) ([]byte, error) {
@@ -171,24 +154,12 @@ func (p *predictService) CreateIndividualPredict(req requests.CreateToddlerReque
 		UpdatedAt:         time.Now(),
 	}
 
-	saved, err := p.repo.CreateIndividualPredict(predictModel, locationID, toddlerID)
+	predict, err := p.repo.CreateIndividualPredict(predictModel, locationID, toddlerID)
 	if err != nil {
 		return nil, pkg.NewInternalServerError("Gagal menyimpan prediksi")
 	}
 
-	return &responses.PredictResponse{
-		ID:                saved.ID,
-		ToddlerID:         saved.ToddlerID,
-		CreatedByID:       saved.CreatedByID,
-		Name:              saved.Name,
-		Height:            saved.Height,
-		Age:               saved.Age,
-		Sex:               saved.Sex,
-		Zscore:            saved.Zscore,
-		NutritionalStatus: saved.NutritionalStatus,
-		CreatedAt:         saved.CreatedAt,
-		UpdatedAt:         saved.UpdatedAt,
-	}, nil
+	return responses.FromModelPredict(*predict), nil
 }
 
 func (p *predictService) DeletePredictByID(id int, locationID, userID int) error {
@@ -221,23 +192,6 @@ func (p *predictService) GetAllPredict(locationID int, pageStr, limitStr string)
 
 	totalPage := int(math.Ceil(float64(total) / float64(limit)))
 
-	var responsesList []responses.PredictResponse
-	for _, pred := range predicts {
-		responsesList = append(responsesList, responses.PredictResponse{
-			ID:                pred.ID,
-			ToddlerID:         pred.ToddlerID,
-			CreatedByID:       pred.CreatedByID,
-			Name:              pred.Name,
-			Height:            pred.Height,
-			Age:               pred.Age,
-			Sex:               pred.Sex,
-			Zscore:            pred.Zscore,
-			NutritionalStatus: pred.NutritionalStatus,
-			CreatedAt:         pred.CreatedAt,
-			UpdatedAt:         pred.UpdatedAt,
-		})
-	}
-
 	meta := responses.PaginationMeta{
 		Page:      page,
 		Limit:     limit,
@@ -245,7 +199,7 @@ func (p *predictService) GetAllPredict(locationID int, pageStr, limitStr string)
 		TotalPage: totalPage,
 	}
 
-	return responsesList, &meta, nil
+	return responses.FromModelPredictList(predicts), &meta, nil
 }
 
 func (p *predictService) GetAllPredictByToddlerID(locationID int, toddlerID int) ([]responses.PredictResponse, error) {
@@ -254,24 +208,7 @@ func (p *predictService) GetAllPredictByToddlerID(locationID int, toddlerID int)
 		return nil, pkg.NewInternalServerError("Gagal mengambil data prediksi")
 	}
 
-	var responsesList []responses.PredictResponse
-	for _, pred := range predicts {
-		responsesList = append(responsesList, responses.PredictResponse{
-			ID:                pred.ID,
-			ToddlerID:         pred.ToddlerID,
-			CreatedByID:       pred.CreatedByID,
-			Name:              pred.Name,
-			Height:            pred.Height,
-			Age:               pred.Age,
-			Sex:               pred.Sex,
-			Zscore:            pred.Zscore,
-			NutritionalStatus: pred.NutritionalStatus,
-			CreatedAt:         pred.CreatedAt,
-			UpdatedAt:         pred.UpdatedAt,
-		})
-	}
-
-	return responsesList, nil
+	return responses.FromModelPredictList(predicts), nil
 }
 
 func (p *predictService) GetPredictByID(id int) (*responses.PredictResponse, error) {
@@ -280,51 +217,18 @@ func (p *predictService) GetPredictByID(id int) (*responses.PredictResponse, err
 		return nil, pkg.NewNotFoundError("Prediksi tidak ditemukan")
 	}
 
-	return &responses.PredictResponse{
-		ID:                predict.ID,
-		ToddlerID:         predict.ToddlerID,
-		CreatedByID:       predict.CreatedByID,
-		Name:              predict.Name,
-		Height:            predict.Height,
-		Age:               predict.Age,
-		Sex:               predict.Sex,
-		Zscore:            predict.Zscore,
-		NutritionalStatus: predict.NutritionalStatus,
-		CreatedAt:         predict.CreatedAt,
-		UpdatedAt:         predict.UpdatedAt,
-	}, nil
+	return responses.FromModelPredict(*predict), nil
 }
 
 func (p *predictService) UpdatePredictByID(id int, req *requests.UpdatePredictRequest) (*responses.PredictResponse, error) {
-	predictModel := &models.Predict{
-		ID:                id,
-		DeletedByID:       nil,
-		Height:            *req.Height,
-		Age:               *req.Age,
-		Sex:               *req.Sex,
-		Zscore:            *req.Zscore,
-		NutritionalStatus: *req.NutritionalStatus,
-		UpdatedAt:         time.Now(),
-	}
+	predictModel := req.ToUpdateModel(id)
 
-	updated, err := p.repo.UpdatePredictByID(id, predictModel)
+	predict, err := p.repo.UpdatePredictByID(id, &predictModel)
 	if err != nil {
 		return nil, pkg.NewInternalServerError("Gagal update prediksi")
 	}
 
-	return &responses.PredictResponse{
-		ID:                updated.ID,
-		ToddlerID:         updated.ToddlerID,
-		CreatedByID:       updated.CreatedByID,
-		Name:              updated.Name,
-		Height:            updated.Height,
-		Age:               updated.Age,
-		Sex:               updated.Sex,
-		Zscore:            updated.Zscore,
-		NutritionalStatus: updated.NutritionalStatus,
-		CreatedAt:         updated.CreatedAt,
-		UpdatedAt:         updated.UpdatedAt,
-	}, nil
+	return responses.FromModelPredict(*predict), nil
 }
 
 func NewPredictService(repo repositories.PredictRepository, mlAPIURL string) PredictService {

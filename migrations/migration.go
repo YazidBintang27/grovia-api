@@ -12,6 +12,9 @@ import (
 var dbMigrations embed.FS
 
 func Initiator(dbParam *gorm.DB) {
+	var dbName string
+	dbParam.Raw("SELECT current_database()").Scan(&dbName)
+	fmt.Println("MIGRATION CONNECTED TO DB:", dbName)
 	gormDB, err := dbParam.DB()
 	if err != nil {
 		panic("failed to get gorm.DB: " + err.Error())

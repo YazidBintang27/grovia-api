@@ -17,7 +17,7 @@ type UserRepository interface {
 	FindUsersByRole(roles []string, name string, locationID, limit, offset int) ([]models.User, int, error)
 }
 
-type userRepository struct {
+type userRepository struct { 
 	db *gorm.DB
 }
 
